@@ -40,13 +40,23 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: inscError.message }, { status: 400 });
   }
 
-  const pref = await crearPreferencia({
-    titulo: `${torneo.nombre} — ${categoria}`,
-    monto: Number(torneo.monto_inscripcion),
-    inscripcionId: inscripcion.id,
-    jugadorEmail: user.email!,
-    appUrl: process.env.NEXT_PUBLIC_APP_URL!,
-  });
+  let pref;
+  try {
+    pref = await crearPreferencia({
+      titulo: `${torneo.nombre} — ${categoria}`,
+      monto: Number(torneo.monto_inscripcion),
+      inscripcionId: inscripcion.id,
+      jugadorEmail: user.email!,
+      appUrl: process.env.NEXT_PUBLIC_APP_URL!,
+    });
+  } catch (err) {
+    console.error("MercadoPago crearPreferencia error:", err);
+    await supabase.from("inscripcion").delete().eq("id", inscripcion.id);
+    return NextResponse.json(
+      { error: "Error al conectar con MercadoPago. Intentá de nuevo." },
+      { status: 502 }
+    );
+  }
 
   await supabase
     .from("inscripcion")

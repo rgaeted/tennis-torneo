@@ -45,7 +45,11 @@ create table public.inscripcion (
   mercadopago_payment_id text,
   mercadopago_preference_id text,
   created_at timestamptz not null default now(),
-  unique (torneo_id, jugador_id, categoria)
+  unique (torneo_id, jugador_id, categoria),
+  check (
+    (es_doble = false and companero_id is null) or
+    (es_doble = true  and companero_id is not null)
+  )
 );
 
 -- Tabla: cuadro
@@ -70,8 +74,16 @@ create table public.partido (
   resultado jsonb,
   cancha text,
   hora_inicio timestamptz,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  unique (cuadro_id, ronda, posicion)
 );
+
+-- Indexes for common query patterns
+create index on public.inscripcion (torneo_id);
+create index on public.inscripcion (jugador_id);
+create index on public.partido (cuadro_id);
+create index on public.partido (jugador1_id);
+create index on public.partido (jugador2_id);
 
 -- RLS: habilitar en todas las tablas
 alter table public.jugador enable row level security;
@@ -79,6 +91,21 @@ alter table public.torneo enable row level security;
 alter table public.inscripcion enable row level security;
 alter table public.cuadro enable row level security;
 alter table public.partido enable row level security;
+
+-- Función helper para verificar admin (SECURITY DEFINER evita recursión RLS en tabla jugador)
+-- Defined before any policy that references it so PostgreSQL can resolve the OID.
+create or replace function public.is_admin()
+returns boolean
+language sql
+security definer
+set search_path = ''
+stable
+as $$
+  select coalesce(
+    (select es_admin from public.jugador where id = auth.uid()),
+    false
+  );
+$$;
 
 -- Políticas: jugador
 create policy "Jugador puede ver su propio perfil"
@@ -94,9 +121,15 @@ create policy "Admin puede ver todos los jugadores"
 -- Políticas: torneo (lectura pública, escritura solo admin)
 create policy "Torneos son públicos"
   on public.torneo for select using (true);
-create policy "Solo admin puede crear/editar torneos"
-  on public.torneo for all
-  using (exists (select 1 from public.jugador j where j.id = auth.uid() and j.es_admin = true));
+create policy "Admin puede crear torneos"
+  on public.torneo for insert
+  with check (public.is_admin());
+create policy "Admin puede editar torneos"
+  on public.torneo for update
+  using (public.is_admin());
+create policy "Admin puede eliminar torneos"
+  on public.torneo for delete
+  using (public.is_admin());
 
 -- Políticas: inscripcion
 create policy "Jugador ve sus inscripciones"
@@ -105,10 +138,10 @@ create policy "Jugador puede inscribirse"
   on public.inscripcion for insert with check (auth.uid() = jugador_id);
 create policy "Admin ve todas las inscripciones"
   on public.inscripcion for select
-  using (exists (select 1 from public.jugador j where j.id = auth.uid() and j.es_admin = true));
+  using (public.is_admin());
 create policy "Admin puede actualizar inscripciones"
   on public.inscripcion for update
-  using (exists (select 1 from public.jugador j where j.id = auth.uid() and j.es_admin = true));
+  using (public.is_admin());
 create policy "Webhook puede actualizar estado pago"
   on public.inscripcion for update
   using (auth.role() = 'service_role');
@@ -118,29 +151,19 @@ create policy "Cuadros son públicos"
   on public.cuadro for select using (true);
 create policy "Solo admin gestiona cuadros"
   on public.cuadro for all
-  using (exists (select 1 from public.jugador j where j.id = auth.uid() and j.es_admin = true));
+  using (public.is_admin());
 create policy "Partidos son públicos"
   on public.partido for select using (true);
 create policy "Solo admin gestiona partidos"
   on public.partido for all
-  using (exists (select 1 from public.jugador j where j.id = auth.uid() and j.es_admin = true));
-
--- Función helper para verificar admin (SECURITY DEFINER evita recursión RLS en tabla jugador)
-create or replace function public.is_admin()
-returns boolean
-language sql
-security definer
-stable
-as $$
-  select coalesce(
-    (select es_admin from public.jugador where id = auth.uid()),
-    false
-  );
-$$;
+  using (public.is_admin());
 
 -- Función: trigger para crear perfil al registrarse
 create or replace function public.handle_new_user()
-returns trigger language plpgsql security definer as $$
+returns trigger language plpgsql
+security definer
+set search_path = ''
+as $$
 begin
   insert into public.jugador (id, nombre, apellido)
   values (

@@ -1,7 +1,15 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-export async function middleware(request: NextRequest) {
+function redirectWithCookies(supabaseResponse: NextResponse, redirectUrl: URL): NextResponse {
+  const redirectResponse = NextResponse.redirect(redirectUrl);
+  supabaseResponse.cookies.getAll().forEach(cookie => {
+    redirectResponse.cookies.set(cookie);
+  });
+  return redirectResponse;
+}
+
+export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -24,15 +32,13 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   const path = request.nextUrl.pathname;
 
-  // Proteger rutas de jugador
   if (path.startsWith("/mi-perfil") && !user) {
-    return NextResponse.redirect(new URL("/login", request.url));
+    return redirectWithCookies(supabaseResponse, new URL("/login", request.url));
   }
 
-  // Proteger rutas de admin
   if (path.startsWith("/admin")) {
     if (!user) {
-      return NextResponse.redirect(new URL("/login", request.url));
+      return redirectWithCookies(supabaseResponse, new URL("/login", request.url));
     }
     const { data: jugador } = await supabase
       .from("jugador")
@@ -41,7 +47,7 @@ export async function middleware(request: NextRequest) {
       .single();
 
     if (!jugador?.es_admin) {
-      return NextResponse.redirect(new URL("/", request.url));
+      return redirectWithCookies(supabaseResponse, new URL("/", request.url));
     }
   }
 

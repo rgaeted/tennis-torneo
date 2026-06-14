@@ -33,9 +33,6 @@ export function generarPartidosEliminacion(
   if (jugadores.length > tamano) {
     throw new Error(`Hay más jugadores (${jugadores.length}) que posiciones en el bracket (${tamano})`);
   }
-  if (jugadores.length < tamano) {
-    throw new Error(`Se necesitan exactamente ${tamano} jugadores para este bracket (hay ${jugadores.length})`);
-  }
 
   const slots = [...jugadores];
 

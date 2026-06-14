@@ -33,9 +33,17 @@ export async function POST(request: Request) {
   const jugadorIds = inscripciones.map((i) => i.jugador_id);
   const tamanoNum = Number(tamano) as 16 | 32;
 
+  if (jugadorIds.length > tamanoNum) {
+    return NextResponse.json({ error: `Hay más jugadores (${jugadorIds.length}) que posiciones en el bracket (${tamanoNum})` }, { status: 400 });
+  }
+
+  // Pad with byes to fill the bracket
+  const slots = [...jugadorIds];
+  while (slots.length < tamanoNum) slots.push("bye");
+
   let partidos;
   try {
-    partidos = generarPartidosEliminacion(jugadorIds, tamanoNum);
+    partidos = generarPartidosEliminacion(slots, tamanoNum);
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : "Error generando cuadro" }, { status: 400 });
   }

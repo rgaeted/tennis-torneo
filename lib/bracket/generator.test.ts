@@ -36,9 +36,17 @@ describe("generarPartidosEliminacion", () => {
     });
   });
 
-  it("lanza error si jugadores insuficientes para el tamaño", () => {
-    const jugadores = Array.from({ length: 10 }, (_, i) => `jugador-${i}`);
+  it("lanza error si hay más jugadores que posiciones en el bracket", () => {
+    const jugadores = Array.from({ length: 20 }, (_, i) => `jugador-${i}`);
     expect(() => generarPartidosEliminacion(jugadores, 16)).toThrow();
+  });
+
+  it("acepta menos jugadores que el tamaño del bracket (con byes)", () => {
+    const jugadores = Array.from({ length: 12 }, (_, i) => `jugador-${i}`);
+    const slots = [...jugadores];
+    while (slots.length < 16) slots.push("bye");
+    const partidos = generarPartidosEliminacion(slots, 16);
+    expect(partidos).toHaveLength(15);
   });
 });
 

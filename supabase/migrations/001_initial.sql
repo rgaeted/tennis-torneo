@@ -89,7 +89,7 @@ create policy "Insert al registrarse"
   on public.jugador for insert with check (auth.uid() = id);
 create policy "Admin puede ver todos los jugadores"
   on public.jugador for select
-  using (exists (select 1 from public.jugador j where j.id = auth.uid() and j.es_admin = true));
+  using (public.is_admin());
 
 -- Políticas: torneo (lectura pública, escritura solo admin)
 create policy "Torneos son públicos"
@@ -124,6 +124,19 @@ create policy "Partidos son públicos"
 create policy "Solo admin gestiona partidos"
   on public.partido for all
   using (exists (select 1 from public.jugador j where j.id = auth.uid() and j.es_admin = true));
+
+-- Función helper para verificar admin (SECURITY DEFINER evita recursión RLS en tabla jugador)
+create or replace function public.is_admin()
+returns boolean
+language sql
+security definer
+stable
+as $$
+  select coalesce(
+    (select es_admin from public.jugador where id = auth.uid()),
+    false
+  );
+$$;
 
 -- Función: trigger para crear perfil al registrarse
 create or replace function public.handle_new_user()

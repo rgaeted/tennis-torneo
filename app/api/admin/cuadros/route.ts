@@ -40,7 +40,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: err instanceof Error ? err.message : "Error generando cuadro" }, { status: 400 });
   }
 
-  await admin.from("cuadro").delete().eq("torneo_id", torneoId).eq("categoria", categoria);
+  const { error: deleteError } = await admin
+    .from("cuadro")
+    .delete()
+    .eq("torneo_id", torneoId)
+    .eq("categoria", categoria);
+
+  if (deleteError) {
+    return NextResponse.json({ error: "Error al eliminar cuadro existente" }, { status: 500 });
+  }
 
   const { data: cuadro, error: cuadroError } = await admin
     .from("cuadro")

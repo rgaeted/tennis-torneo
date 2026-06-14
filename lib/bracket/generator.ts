@@ -37,9 +37,7 @@ export function generarPartidosEliminacion(
     throw new Error(`Se necesitan exactamente ${tamano} jugadores para este bracket (hay ${jugadores.length})`);
   }
 
-  // Fill with byes if fewer players than bracket size
   const slots = [...jugadores];
-  while (slots.length < tamano) slots.push("bye");
 
   // Fisher-Yates shuffle for random draw
   for (let i = slots.length - 1; i > 0; i--) {

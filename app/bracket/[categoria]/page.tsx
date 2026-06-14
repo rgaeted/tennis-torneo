@@ -42,10 +42,12 @@ export default async function BracketPage({ params }: { params: Promise<{ catego
         <p className="text-gray-400 text-sm mt-1">
           {torneo?.nombre} · Edición {torneo?.edicion} · {torneo?.anio}
         </p>
-        <div className="mt-2 inline-flex items-center gap-2 bg-red-900/40 border border-red-800 rounded-full px-3 py-1">
-          <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-          <span className="text-xs text-red-300 font-medium">En vivo</span>
-        </div>
+        {partidos?.some((p: any) => !p.ganador_id) && (
+          <div className="mt-2 inline-flex items-center gap-2 bg-red-900/40 border border-red-800 rounded-full px-3 py-1">
+            <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+            <span className="text-xs text-red-300 font-medium">En vivo</span>
+          </div>
+        )}
       </div>
       <BracketView partidos={(partidos as any[]) ?? []} />
     </div>

@@ -45,7 +45,7 @@ export default async function MiPerfilPage() {
       .from("club")
       .select("id, nombre, num_canchas")
       .order("nombre"),
-    supabase
+    (supabase as any)
       .from("partido_amistoso")
       .select(`
         id, retador_id, cancha, fecha_hora, estado, partido_id, created_at,

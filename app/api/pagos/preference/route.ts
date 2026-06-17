@@ -37,7 +37,10 @@ export async function POST(request: Request) {
     .single();
 
   if (inscError) {
-    return NextResponse.json({ error: inscError.message }, { status: 400 });
+    const msg = inscError.code === "23505"
+      ? "Ya estás inscrito en este torneo con esa categoría."
+      : inscError.message;
+    return NextResponse.json({ error: msg }, { status: 400 });
   }
 
   let pref;

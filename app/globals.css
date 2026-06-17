@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #0F0F0F;
+  --foreground: #F0F0F0;
 }
 
 @theme inline {
@@ -10,17 +10,56 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  /* Escala oscura */
+  --color-navy-950: #0F0F0F;
+  --color-navy-900: #161616;
+  --color-navy-800: #242424;
+  --color-navy-700: #2E2E2E;
+  --color-navy-600: #3D3D3D;
+
+  /* Neon lima - acento principal */
+  --color-court: #C8FF00;
+  --color-court-dark: #A0CC00;
+
+  /* Neon secundario */
+  --color-ball: #C8FF00;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+.bracket-scroll::-webkit-scrollbar {
+  height: 4px;
+}
+.bracket-scroll::-webkit-scrollbar-track {
+  background: #1A1A1A;
+  border-radius: 2px;
+}
+.bracket-scroll::-webkit-scrollbar-thumb {
+  background: #C8FF00;
+  border-radius: 2px;
+}
+.bracket-scroll::-webkit-scrollbar-thumb:hover {
+  background: #b0e600;
+}
+
+@layer base {
+  input, textarea {
+    color: white;
+    background-color: #161616;
+  }
+
+  select {
+    color: white;
+    background-color: #161616;
+  }
+
+  select option {
+    background-color: #161616;
+    color: white;
+  }
 }

@@ -1,20 +1,20 @@
 import { createClient } from "@/lib/supabase/server";
-import { ResultFormWrapper } from "@/components/admin/ResultFormWrapper";
+import PartidosAdmin from "./PartidosAdmin";
 
 export default async function PartidosPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await createClient();
 
-  const { data: cuadros } = await supabase
-    .from("cuadro")
-    .select("id, categoria")
-    .eq("torneo_id", id);
+  const [{ data: torneo }, { data: cuadros }] = await Promise.all([
+    supabase.from("torneo").select("club:club_id(num_canchas)").eq("id", id).single(),
+    supabase.from("cuadro").select("id, categoria").eq("torneo_id", id),
+  ]);
 
   if (!cuadros?.length) {
     return (
       <div>
         <h1 className="text-2xl font-bold mb-4">Partidos</h1>
-        <p className="text-gray-500">No hay cuadros generados aún.</p>
+        <p className="text-slate-500">No hay cuadros generados aún.</p>
       </div>
     );
   }
@@ -24,39 +24,23 @@ export default async function PartidosPage({ params }: { params: Promise<{ id: s
   const { data: partidos } = await supabase
     .from("partido")
     .select(`
-      id, ronda, posicion, cancha, hora_inicio, ganador_id, resultado,
-      jugador1:jugador1_id (id, nombre, apellido),
-      jugador2:jugador2_id (id, nombre, apellido),
-      cuadro:cuadro_id (categoria)
+      id, ronda, posicion, cancha, hora_inicio, ganador_id, resultado, started_at, ended_at,
+      jugador1:jugador!jugador1_id(id, nombre, apellido),
+      jugador2:jugador!jugador2_id(id, nombre, apellido),
+      ganador:jugador!ganador_id(nombre, apellido),
+      cuadro:cuadro_id(categoria)
     `)
     .in("cuadro_id", cuadroIds)
-    .is("ganador_id", null)
     .not("jugador1_id", "is", null)
     .not("jugador2_id", "is", null)
+    .order("hora_inicio", { ascending: true, nullsFirst: false })
     .order("ronda")
     .order("posicion");
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6">Cargar resultados</h1>
-      {(!partidos || partidos.length === 0) ? (
-        <p className="text-gray-500">No hay partidos pendientes de resultado.</p>
-      ) : (
-        <div className="space-y-4">
-          {(partidos as any[]).map((p) => (
-            <div key={p.id}>
-              <p className="text-xs text-gray-500 mb-1 uppercase tracking-wider">
-                {p.cuadro?.categoria} · {p.ronda?.replace("_", " ")}
-              </p>
-              <ResultFormWrapper
-                partidoId={p.id}
-                jugador1={p.jugador1}
-                jugador2={p.jugador2}
-              />
-            </div>
-          ))}
-        </div>
-      )}
+      <h1 className="text-2xl font-bold mb-6">Partidos</h1>
+      <PartidosAdmin partidos={(partidos ?? []) as any[]} numCanchas={(torneo as any)?.club?.num_canchas} />
     </div>
   );
 }

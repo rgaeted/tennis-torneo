@@ -7,10 +7,12 @@ export interface PartidoGenerado {
   jugador2_id: string | null;
 }
 
+const RONDAS_8: Ronda[]  = ["cuartos", "semis", "final"];
 const RONDAS_16: Ronda[] = ["primera_ronda", "segunda_ronda", "cuartos", "semis", "final"];
 const RONDAS_32: Ronda[] = ["primera_ronda", "segunda_ronda", "cuartos", "semis", "final"];
 
-export function calcularRondas(tamano: 16 | 32): Ronda[] {
+export function calcularRondas(tamano: 8 | 16 | 32): Ronda[] {
+  if (tamano === 8) return RONDAS_8;
   return tamano === 16 ? RONDAS_16 : RONDAS_32;
 }
 
@@ -28,7 +30,7 @@ export function siguienteRonda(ronda: Ronda): Ronda | null {
  */
 export function generarPartidosEliminacion(
   jugadores: string[],
-  tamano: 16 | 32
+  tamano: 8 | 16 | 32
 ): PartidoGenerado[] {
   if (jugadores.length > tamano) {
     throw new Error(`Hay más jugadores (${jugadores.length}) que posiciones en el bracket (${tamano})`);

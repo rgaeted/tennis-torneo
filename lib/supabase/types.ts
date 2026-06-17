@@ -7,6 +7,54 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 export type Database = {
   public: {
     Tables: {
+      organizacion: {
+        Row: {
+          id: string
+          nombre: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          nombre: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          nombre?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      club: {
+        Row: {
+          id: string
+          nombre: string
+          direccion: string | null
+          num_canchas: number
+          imagen_url: string | null
+          descripcion: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          nombre: string
+          direccion?: string | null
+          num_canchas?: number
+          imagen_url?: string | null
+          descripcion?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          nombre?: string
+          direccion?: string | null
+          num_canchas?: number
+          imagen_url?: string | null
+          descripcion?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
       jugador: {
         Row: {
           id: string
@@ -14,7 +62,9 @@ export type Database = {
           apellido: string
           telefono: string | null
           categoria_habitual: Database["public"]["Enums"]["categoria_tipo"] | null
-          es_admin: boolean
+          rol: "admin" | "jugador" | "turno" | "organizador"
+          organizacion_id: string | null
+          foto_url: string | null
           created_at: string
         }
         Insert: {
@@ -23,7 +73,9 @@ export type Database = {
           apellido: string
           telefono?: string | null
           categoria_habitual?: Database["public"]["Enums"]["categoria_tipo"] | null
-          es_admin?: boolean
+          rol?: "admin" | "jugador" | "turno" | "organizador"
+          organizacion_id?: string | null
+          foto_url?: string | null
           created_at?: string
         }
         Update: {
@@ -32,7 +84,9 @@ export type Database = {
           apellido?: string
           telefono?: string | null
           categoria_habitual?: Database["public"]["Enums"]["categoria_tipo"] | null
-          es_admin?: boolean
+          rol?: "admin" | "jugador" | "turno" | "organizador"
+          organizacion_id?: string | null
+          foto_url?: string | null
           created_at?: string
         }
         Relationships: []
@@ -47,6 +101,12 @@ export type Database = {
           fecha_fin: string
           estado: Database["public"]["Enums"]["estado_torneo"]
           monto_inscripcion: number
+          categorias: Database["public"]["Enums"]["categoria_tipo"][]
+          club_id: string | null
+          organizacion_id: string | null
+          imagen_url: string | null
+          direccion: string | null
+          descripcion: string | null
           created_at: string
         }
         Insert: {
@@ -58,6 +118,12 @@ export type Database = {
           fecha_fin: string
           estado?: Database["public"]["Enums"]["estado_torneo"]
           monto_inscripcion: number
+          categorias?: Database["public"]["Enums"]["categoria_tipo"][]
+          club_id?: string | null
+          organizacion_id?: string | null
+          imagen_url?: string | null
+          direccion?: string | null
+          descripcion?: string | null
           created_at?: string
         }
         Update: {
@@ -69,6 +135,12 @@ export type Database = {
           fecha_fin?: string
           estado?: Database["public"]["Enums"]["estado_torneo"]
           monto_inscripcion?: number
+          categorias?: Database["public"]["Enums"]["categoria_tipo"][]
+          club_id?: string | null
+          organizacion_id?: string | null
+          imagen_url?: string | null
+          direccion?: string | null
+          descripcion?: string | null
           created_at?: string
         }
         Relationships: []
@@ -121,6 +193,7 @@ export type Database = {
           torneo_id: string
           categoria: Database["public"]["Enums"]["categoria_tipo"]
           tamano: Database["public"]["Enums"]["tamano_bracket"]
+          cerrado: boolean
           generado_en: string
         }
         Insert: {
@@ -128,6 +201,7 @@ export type Database = {
           torneo_id: string
           categoria: Database["public"]["Enums"]["categoria_tipo"]
           tamano?: Database["public"]["Enums"]["tamano_bracket"]
+          cerrado?: boolean
           generado_en?: string
         }
         Update: {
@@ -135,6 +209,7 @@ export type Database = {
           torneo_id?: string
           categoria?: Database["public"]["Enums"]["categoria_tipo"]
           tamano?: Database["public"]["Enums"]["tamano_bracket"]
+          cerrado?: boolean
           generado_en?: string
         }
         Relationships: []
@@ -142,41 +217,50 @@ export type Database = {
       partido: {
         Row: {
           id: string
-          cuadro_id: string
-          ronda: Database["public"]["Enums"]["ronda_tipo"]
+          cuadro_id: string | null
+          ronda: string
           posicion: number
           jugador1_id: string | null
           jugador2_id: string | null
           ganador_id: string | null
           resultado: Json | null
+          resultado_confirmado: boolean
           cancha: string | null
           hora_inicio: string | null
+          started_at: string | null
+          ended_at: string | null
           created_at: string
         }
         Insert: {
           id?: string
-          cuadro_id: string
-          ronda: Database["public"]["Enums"]["ronda_tipo"]
+          cuadro_id?: string | null
+          ronda: string
           posicion: number
           jugador1_id?: string | null
           jugador2_id?: string | null
           ganador_id?: string | null
           resultado?: Json | null
+          resultado_confirmado?: boolean
           cancha?: string | null
           hora_inicio?: string | null
+          started_at?: string | null
+          ended_at?: string | null
           created_at?: string
         }
         Update: {
           id?: string
-          cuadro_id?: string
-          ronda?: Database["public"]["Enums"]["ronda_tipo"]
+          cuadro_id?: string | null
+          ronda?: string
           posicion?: number
           jugador1_id?: string | null
           jugador2_id?: string | null
           ganador_id?: string | null
           resultado?: Json | null
+          resultado_confirmado?: boolean
           cancha?: string | null
           hora_inicio?: string | null
+          started_at?: string | null
+          ended_at?: string | null
           created_at?: string
         }
         Relationships: []
@@ -189,7 +273,7 @@ export type Database = {
       categoria_tipo: "cuarta" | "tercera" | "segunda" | "primera" | "damas" | "dobles"
       estado_pago: "pendiente" | "pagado" | "rechazado"
       ronda_tipo: "primera_ronda" | "segunda_ronda" | "cuartos" | "semis" | "final"
-      tamano_bracket: "16" | "32"
+      tamano_bracket: "8" | "16" | "32"
     }
     CompositeTypes: {}
   }

@@ -2,8 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 
 const ESTADO_COLORS: Record<string, string> = {
-  borrador: "text-gray-400",
-  activo: "text-green-400",
+  borrador: "text-slate-400",
+  activo: "text-court",
   cerrado: "text-red-400",
 };
 
@@ -21,7 +21,7 @@ export default async function TorneosPage() {
         <h1 className="text-2xl font-bold">Torneos</h1>
         <Link
           href="/admin/torneo/nuevo"
-          className="px-4 py-2 bg-green-500 text-black font-bold rounded-lg hover:bg-green-400 text-sm"
+          className="px-4 py-2 bg-court text-white font-bold rounded-lg hover:bg-court-dark text-sm transition-colors"
         >
           + Nuevo torneo
         </Link>
@@ -31,15 +31,24 @@ export default async function TorneosPage() {
           <Link
             key={t.id}
             href={`/admin/torneo/${t.id}`}
-            className="flex items-center justify-between bg-gray-900 border border-gray-800 rounded-xl px-6 py-4 hover:border-gray-600 transition-colors"
+            className="flex items-center gap-4 bg-navy-900 border border-navy-700 rounded-xl overflow-hidden hover:border-navy-600 transition-colors"
           >
-            <div>
+            {(t as any).imagen_url ? (
+              <img
+                src={(t as any).imagen_url}
+                alt={t.nombre}
+                className="w-20 h-16 object-cover flex-shrink-0"
+              />
+            ) : (
+              <div className="w-20 h-16 bg-navy-800 flex-shrink-0" />
+            )}
+            <div className="flex-1 min-w-0 py-3">
               <div className="font-medium">{t.nombre}</div>
-              <div className="text-sm text-gray-500">
+              <div className="text-sm text-slate-500">
                 Edición {t.edicion} · {t.anio} · ${t.monto_inscripcion}
               </div>
             </div>
-            <span className={`text-sm font-medium capitalize ${ESTADO_COLORS[t.estado] ?? ""}`}>
+            <span className={`text-sm font-medium capitalize pr-5 flex-shrink-0 ${ESTADO_COLORS[t.estado] ?? ""}`}>
               {t.estado}
             </span>
           </Link>

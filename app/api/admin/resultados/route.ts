@@ -1,21 +1,16 @@
-import { createClient, createAdminClient } from "@/lib/supabase/server";
-import { siguienteRonda } from "@/lib/bracket/generator";
+import { createAdminClient } from "@/lib/supabase/server";
+import { requirePartidoAccess } from "@/lib/supabase/orgAuth";
+import { avanzarGanadorConByes } from "@/lib/bracket/byes";
 import { NextResponse } from "next/server";
 import type { Database } from "@/lib/supabase/types";
 
 type Ronda = Database["public"]["Enums"]["ronda_tipo"];
 
 export async function POST(request: Request) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "No autenticado" }, { status: 401 });
-
-  const { data: jugador } = await supabase.from("jugador").select("es_admin").eq("id", user.id).single();
-  if (!jugador?.es_admin) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
-
   const { partidoId, ganadorId, resultado } = await request.json();
+  if (!await requirePartidoAccess(partidoId)) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
 
-  const admin = await createAdminClient();
+  const admin = createAdminClient();
 
   const { data: partido } = await admin
     .from("partido")
@@ -27,26 +22,15 @@ export async function POST(request: Request) {
 
   await admin.from("partido").update({ ganador_id: ganadorId, resultado }).eq("id", partidoId);
 
-  const siguienteRondaNombre = siguienteRonda(partido.ronda as Ronda);
-  if (siguienteRondaNombre) {
-    const posicionSiguiente = Math.floor(partido.posicion / 2);
-    const esPrimerJugador = partido.posicion % 2 === 0;
-
-    const { data: siguientePartido } = await admin
-      .from("partido")
-      .select("id")
-      .eq("cuadro_id", partido.cuadro_id)
-      .eq("ronda", siguienteRondaNombre)
-      .eq("posicion", posicionSiguiente)
-      .single();
-
-    if (siguientePartido) {
-      await admin.from("partido").update(
-        esPrimerJugador
-          ? { jugador1_id: ganadorId }
-          : { jugador2_id: ganadorId }
-      ).eq("id", siguientePartido.id);
-    }
+  // Advance winner to next round (only for tournament matches, not amistosos)
+  if (partido.cuadro_id) {
+    await avanzarGanadorConByes(
+      partido.cuadro_id,
+      partido.ronda as Ronda,
+      partido.posicion,
+      ganadorId,
+      admin
+    );
   }
 
   return NextResponse.json({ ok: true });

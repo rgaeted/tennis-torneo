@@ -32,21 +32,39 @@ export async function proxy(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   const path = request.nextUrl.pathname;
 
-  if (path.startsWith("/mi-perfil") && !user) {
+  // Rutas que requieren sesión
+  if ((path.startsWith("/mi-perfil") || path.startsWith("/mis-partidos")) && !user) {
     return redirectWithCookies(supabaseResponse, new URL("/login", request.url));
   }
 
+  // Rutas de organizador
+  if (path.startsWith("/organizador")) {
+    if (!user) {
+      return redirectWithCookies(supabaseResponse, new URL("/login", request.url));
+    }
+    const { data: jugador } = await supabase
+      .from("jugador")
+      .select("rol")
+      .eq("id", user.id)
+      .single();
+
+    if (jugador?.rol !== "organizador" && jugador?.rol !== "admin") {
+      return redirectWithCookies(supabaseResponse, new URL("/", request.url));
+    }
+  }
+
+  // Rutas de admin
   if (path.startsWith("/admin")) {
     if (!user) {
       return redirectWithCookies(supabaseResponse, new URL("/login", request.url));
     }
     const { data: jugador } = await supabase
       .from("jugador")
-      .select("es_admin")
+      .select("rol")
       .eq("id", user.id)
       .single();
 
-    if (!jugador?.es_admin) {
+    if (jugador?.rol !== "admin") {
       return redirectWithCookies(supabaseResponse, new URL("/", request.url));
     }
   }
@@ -55,5 +73,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/mi-perfil/:path*"],
+  matcher: ["/admin/:path*", "/organizador/:path*", "/mi-perfil/:path*", "/mis-partidos/:path*"],
 };

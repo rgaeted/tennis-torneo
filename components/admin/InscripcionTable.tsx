@@ -5,9 +5,9 @@ type Inscripcion = Database["public"]["Tables"]["inscripcion"]["Row"] & {
 };
 
 const ESTADO_COLORS: Record<string, string> = {
-  pagado: "bg-green-900 text-green-300",
-  pendiente: "bg-yellow-900 text-yellow-300",
-  rechazado: "bg-red-900 text-red-300",
+  pagado: "bg-court/20 text-court",
+  pendiente: "bg-ball/20 text-ball",
+  rechazado: "bg-red-900/40 text-red-400",
 };
 
 export function InscripcionTable({ inscripciones }: { inscripciones: Inscripcion[] }) {
@@ -15,14 +15,14 @@ export function InscripcionTable({ inscripciones }: { inscripciones: Inscripcion
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-gray-800 text-gray-500 text-left">
+          <tr className="border-b border-navy-700 text-slate-500 text-left">
             <th className="pb-3 pr-4">Jugador</th>
             <th className="pb-3 pr-4">Categoría</th>
             <th className="pb-3 pr-4">Monto</th>
             <th className="pb-3">Estado</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-gray-900">
+        <tbody className="divide-y divide-navy-800">
           {inscripciones.map((i) => (
             <tr key={i.id}>
               <td className="py-3 pr-4">
@@ -40,7 +40,7 @@ export function InscripcionTable({ inscripciones }: { inscripciones: Inscripcion
         </tbody>
       </table>
       {inscripciones.length === 0 && (
-        <p className="text-center text-gray-600 py-8">Sin inscripciones aún.</p>
+        <p className="text-center text-slate-600 py-8">Sin inscripciones aún.</p>
       )}
     </div>
   );

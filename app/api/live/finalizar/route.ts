@@ -90,5 +90,13 @@ export async function POST(request: Request) {
     );
   }
 
+  // Si es partido amistoso, marcar el desafío como finalizado
+  if (!partido.cuadro_id) {
+    await (admin as any)
+      .from("partido_amistoso")
+      .update({ estado: "finalizado" })
+      .eq("partido_id", partidoId);
+  }
+
   return NextResponse.json({ ok: true, ganadorId });
 }

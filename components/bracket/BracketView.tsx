@@ -13,6 +13,8 @@ interface Props {
   onSchedule?: (partido: Partido) => void;
   onAddPlayer?: (partido: Partido, slot: "jugador1_id" | "jugador2_id") => void;
   onRemovePlayer?: (partido: Partido, slot: "jugador1_id" | "jugador2_id") => void;
+  onSwapSelect?: (partido: Partido, slot: "jugador1_id" | "jugador2_id") => void;
+  swapSelected?: { partidoId: string; slot: "jugador1_id" | "jugador2_id" } | null;
 }
 
 function BracketConnector({ prevCount, totalHeight }: { prevCount: number; totalHeight: number }) {
@@ -49,7 +51,7 @@ function BracketConnector({ prevCount, totalHeight }: { prevCount: number; total
   );
 }
 
-export function BracketView({ partidos, onResult, onSchedule, onAddPlayer, onRemovePlayer }: Props) {
+export function BracketView({ partidos, onResult, onSchedule, onAddPlayer, onRemovePlayer, onSwapSelect, swapSelected }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const dragging = useRef(false);
   const startX = useRef(0);
@@ -108,6 +110,8 @@ export function BracketView({ partidos, onResult, onSchedule, onAddPlayer, onRem
               onSchedule={onSchedule}
               onAddPlayer={onAddPlayer}
               onRemovePlayer={onRemovePlayer}
+              onSwapSelect={onSwapSelect}
+              swapSelected={swapSelected}
             />
           </div>
         ))}

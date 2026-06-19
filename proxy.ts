@@ -29,42 +29,34 @@ export async function proxy(request: NextRequest) {
     }
   );
 
-  const { data: { user } } = await supabase.auth.getUser();
+  // getSession() lee desde la cookie — sin llamada de red a Supabase Auth
+  const { data: { session } } = await supabase.auth.getSession();
   const path = request.nextUrl.pathname;
+  const userId = session?.user?.id;
 
-  // Rutas que requieren sesión
-  if ((path.startsWith("/mi-perfil") || path.startsWith("/mis-partidos")) && !user) {
+  // Rutas que solo requieren sesión activa
+  if ((path.startsWith("/mi-perfil") || path.startsWith("/mis-partidos")) && !userId) {
     return redirectWithCookies(supabaseResponse, new URL("/login", request.url));
   }
 
-  // Rutas de organizador
-  if (path.startsWith("/organizador")) {
-    if (!user) {
+  // Rutas que requieren rol específico — una sola query para admin y organizador
+  if (path.startsWith("/admin") || path.startsWith("/organizador")) {
+    if (!userId) {
       return redirectWithCookies(supabaseResponse, new URL("/login", request.url));
     }
+
     const { data: jugador } = await supabase
       .from("jugador")
       .select("rol")
-      .eq("id", user.id)
+      .eq("id", userId)
       .single();
 
-    if (jugador?.rol !== "organizador" && jugador?.rol !== "admin") {
+    const rol = jugador?.rol;
+
+    if (path.startsWith("/admin") && rol !== "admin") {
       return redirectWithCookies(supabaseResponse, new URL("/", request.url));
     }
-  }
-
-  // Rutas de admin
-  if (path.startsWith("/admin")) {
-    if (!user) {
-      return redirectWithCookies(supabaseResponse, new URL("/login", request.url));
-    }
-    const { data: jugador } = await supabase
-      .from("jugador")
-      .select("rol")
-      .eq("id", user.id)
-      .single();
-
-    if (jugador?.rol !== "admin") {
+    if (path.startsWith("/organizador") && rol !== "organizador" && rol !== "admin") {
       return redirectWithCookies(supabaseResponse, new URL("/", request.url));
     }
   }

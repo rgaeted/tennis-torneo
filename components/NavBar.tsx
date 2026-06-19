@@ -15,17 +15,22 @@ function TennisIcon() {
 
 export default async function NavBar() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+
+  // getSession() lee desde la cookie sin llamada de red — para display en NavBar es suficiente
+  const { data: { session } } = await supabase.auth.getSession();
+  const userId = session?.user?.id;
 
   let jugador: { nombre: string; apellido: string; rol: string } | null = null;
-  if (user) {
+  if (userId) {
     const { data } = await supabase
       .from("jugador")
       .select("nombre, apellido, rol")
-      .eq("id", user.id)
+      .eq("id", userId)
       .single();
     jugador = data;
   }
+
+  const user = session?.user ?? null;
 
   return (
     <header

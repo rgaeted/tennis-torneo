@@ -20,20 +20,26 @@ export default async function BracketPage({ params }: { params: Promise<{ catego
   const { categoria } = await params;
   const supabase = await createClient();
 
-  const { data: { user } } = await supabase.auth.getUser();
-  let esAdmin = false;
-  if (user) {
-    const { data: jugador } = await supabase.from("jugador").select("rol").eq("id", user.id).single();
-    esAdmin = jugador?.rol === "admin";
-  }
+  // getSession() reads from cookie — no network call
+  const { data: { session } } = await supabase.auth.getSession();
+  const user = session?.user ?? null;
 
-  const { data: cuadro } = await supabase
-    .from("cuadro")
-    .select("id, categoria, tamano, torneo:torneo_id(id, nombre, edicion, anio, estado, club:club_id(num_canchas))")
-    .eq("categoria", categoria as any)
-    .order("generado_en", { ascending: false })
-    .limit(1)
-    .single();
+  // Run role check and cuadro query in parallel
+  const [rolRes, cuadroRes] = await Promise.all([
+    user
+      ? supabase.from("jugador").select("rol").eq("id", user.id).single()
+      : Promise.resolve({ data: null, error: null }),
+    supabase
+      .from("cuadro")
+      .select("id, categoria, tamano, torneo:torneo_id(id, nombre, edicion, anio, estado, club:club_id(num_canchas))")
+      .eq("categoria", categoria as any)
+      .order("generado_en", { ascending: false })
+      .limit(1)
+      .single(),
+  ]);
+
+  const esAdmin = rolRes.data?.rol === "admin";
+  const cuadro = cuadroRes.data;
 
   if (!cuadro) {
     return (

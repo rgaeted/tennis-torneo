@@ -114,7 +114,7 @@ export default function InscribirForm({
                         {jugadoresFiltrados.length === 0 ? (
                           <p className="text-slate-500 text-sm px-3 py-2">Sin resultados</p>
                         ) : (
-                          jugadoresFiltrados.slice(0, 20).map((j) => (
+                          jugadoresFiltrados.map((j) => (
                             <button
                               key={j.id}
                               type="button"

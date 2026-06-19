@@ -15,6 +15,8 @@ interface Props {
   onSchedule?: () => void;
   onAddPlayer?: (slot: "jugador1_id" | "jugador2_id") => void;
   onRemovePlayer?: (slot: "jugador1_id" | "jugador2_id") => void;
+  onSwapSelect?: (slot: "jugador1_id" | "jugador2_id") => void;
+  swapHighlight?: "jugador1_id" | "jugador2_id" | null;
 }
 
 const NEON = "#C8FF00";
@@ -25,6 +27,7 @@ export function BracketMatch({
   jugador1, jugador2, ganadorId, jugador1Id, jugador2Id,
   resultado, horaInicio, cancha, ronda,
   onResult, onSchedule, onAddPlayer, onRemovePlayer,
+  onSwapSelect, swapHighlight,
 }: Props) {
   const abbr = (j: Jugador | null) => j ? `${j.nombre[0]}. ${j.apellido}` : null;
   const sets = (resultado as SetScore[] | null) ?? [];
@@ -66,12 +69,26 @@ export function BracketMatch({
           >
             <div className="flex items-center gap-1 min-w-0 flex-1">
               {id ? (
-                <span
-                  style={{ color: win ? "#FFFFFF" : lose ? "#383838" : "#888888" }}
-                  className="font-medium truncate"
-                >
-                  {abbr(jugador)}
-                </span>
+                onSwapSelect ? (
+                  <button
+                    onClick={() => onSwapSelect(slot)}
+                    className="font-medium truncate text-left leading-none"
+                    style={{
+                      color: swapHighlight === slot ? "#C8FF00" : "#888888",
+                      textDecoration: swapHighlight === slot ? "underline" : "none",
+                      textUnderlineOffset: "3px",
+                    }}
+                  >
+                    {abbr(jugador)}
+                  </button>
+                ) : (
+                  <span
+                    style={{ color: win ? "#FFFFFF" : lose ? "#383838" : "#888888" }}
+                    className="font-medium truncate"
+                  >
+                    {abbr(jugador)}
+                  </span>
+                )
               ) : (
                 <span style={{ color: "#383838" }} className="text-xs italic">—</span>
               )}

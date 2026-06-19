@@ -9,6 +9,7 @@ import { AgregarJugadorModal } from "@/components/admin/AgregarJugadorModal";
 
 type JugadorDisponible = { id: string; nombre: string; apellido: string };
 type AddPlayerTarget = { partido: Partido; slot: "jugador1_id" | "jugador2_id" } | null;
+type SwapTarget = { partidoId: string; slot: "jugador1_id" | "jugador2_id"; nombre: string; apellido: string } | null;
 
 export default function CuadrosPage() {
   const { id: torneoId } = useParams<{ id: string }>();
@@ -23,10 +24,15 @@ export default function CuadrosPage() {
   const [cerrado, setCerrado] = useState(false);
   const [cerrando, setCerrando] = useState(false);
   const [numCanchas, setNumCanchas] = useState(0);
+  const [todosInscritos, setTodosInscritos] = useState<JugadorDisponible[]>([]);
   const [jugadoresDisponibles, setJugadoresDisponibles] = useState<JugadorDisponible[]>([]);
   const [resultModal, setResultModal] = useState<Partido | null>(null);
   const [scheduleModal, setScheduleModal] = useState<Partido | null>(null);
   const [addPlayerTarget, setAddPlayerTarget] = useState<AddPlayerTarget>(null);
+  const [moverMode, setMoverMode] = useState(false);
+  const [selectedSwap, setSelectedSwap] = useState<SwapTarget>(null);
+
+  const iniciado = partidos.some((p) => p.ganador_id !== null);
 
   useEffect(() => {
     createClient().from("torneo").select("categorias, club:club_id(num_canchas)").eq("id", torneoId).single()
@@ -41,19 +47,34 @@ export default function CuadrosPage() {
   const cargarCuadro = useCallback(async () => {
     if (!categoria) return;
     const supabase = createClient();
-    const { data: cuadro } = await supabase
-      .from("cuadro")
-      .select("id, cerrado")
-      .eq("torneo_id", torneoId)
-      .eq("categoria", categoria as any)
-      .maybeSingle();
+
+    // Siempre cargar inscripciones para la categoría seleccionada
+    const [{ data: cuadro }, { data: inscripcionesData }] = await Promise.all([
+      supabase
+        .from("cuadro")
+        .select("id, cerrado")
+        .eq("torneo_id", torneoId)
+        .eq("categoria", categoria as any)
+        .maybeSingle(),
+      supabase
+        .from("inscripcion")
+        .select("jugador:jugador_id(id, nombre, apellido)")
+        .eq("torneo_id", torneoId)
+        .eq("categoria", categoria as any),
+    ]);
+
+    const inscritos = ((inscripcionesData ?? []) as any[])
+      .map((i: any) => i.jugador)
+      .filter(Boolean)
+      .sort((a: any, b: any) => a.apellido.localeCompare(b.apellido));
+    setTodosInscritos(inscritos);
 
     if (!cuadro) {
       setTieneCuadro(false);
       setPartidos([]);
       setCuadroId(null);
       setCerrado(false);
-      setJugadoresDisponibles([]);
+      setJugadoresDisponibles(inscritos);
       return;
     }
 
@@ -61,23 +82,15 @@ export default function CuadrosPage() {
     setTieneCuadro(true);
     setCerrado((cuadro as any).cerrado ?? false);
 
-    const [{ data: partidosData }, { data: inscripcionesData }] = await Promise.all([
-      supabase
-        .from("partido")
-        .select(`
-          id, ronda, posicion, jugador1_id, jugador2_id, ganador_id, resultado, hora_inicio, cancha,
-          jugador1:jugador!jugador1_id(id, nombre, apellido),
-          jugador2:jugador!jugador2_id(id, nombre, apellido)
-        `)
-        .eq("cuadro_id", cuadro.id)
-        .order("posicion"),
-      supabase
-        .from("inscripcion")
-        .select("jugador:jugador_id(id, nombre, apellido)")
-        .eq("torneo_id", torneoId)
-        .eq("categoria", categoria as any)
-        .eq("estado_pago", "pagado"),
-    ]);
+    const { data: partidosData } = await supabase
+      .from("partido")
+      .select(`
+        id, ronda, posicion, jugador1_id, jugador2_id, ganador_id, resultado, hora_inicio, cancha,
+        jugador1:jugador!jugador1_id(id, nombre, apellido),
+        jugador2:jugador!jugador2_id(id, nombre, apellido)
+      `)
+      .eq("cuadro_id", cuadro.id)
+      .order("posicion");
 
     const ps = (partidosData as unknown as Partido[]) ?? [];
     setPartidos(ps);
@@ -88,10 +101,7 @@ export default function CuadrosPage() {
       if (p.jugador2_id) enCuadro.add(p.jugador2_id);
     });
 
-    const disponibles = ((inscripcionesData ?? []) as any[])
-      .map((i: any) => i.jugador)
-      .filter((j: any) => j && !enCuadro.has(j.id));
-    setJugadoresDisponibles(disponibles);
+    setJugadoresDisponibles(inscritos.filter((j: any) => !enCuadro.has(j.id)));
   }, [torneoId, categoria]);
 
   useEffect(() => {
@@ -146,6 +156,41 @@ export default function CuadrosPage() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ cuadroId, partidoId: partido.id, slot }),
+    });
+    const json = await res.json();
+    if (res.ok) {
+      await cargarCuadro();
+    } else {
+      setMsg(`Error: ${json.error}`);
+    }
+  }
+
+  async function handleSwapSelect(partido: Partido, slot: "jugador1_id" | "jugador2_id") {
+    const jugadorId = partido[slot];
+    if (!jugadorId) return;
+    const jugador = slot === "jugador1_id" ? partido.jugador1 : partido.jugador2;
+
+    if (!selectedSwap) {
+      setSelectedSwap({ partidoId: partido.id, slot, nombre: jugador!.nombre, apellido: jugador!.apellido });
+      return;
+    }
+
+    if (selectedSwap.partidoId === partido.id && selectedSwap.slot === slot) {
+      setSelectedSwap(null);
+      return;
+    }
+
+    // Intercambiar los dos jugadores
+    setSelectedSwap(null);
+    if (!cuadroId) return;
+    const res = await fetch("/api/admin/cuadros/intercambiar-jugadores", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        cuadroId,
+        a: { partidoId: selectedSwap.partidoId, slot: selectedSwap.slot },
+        b: { partidoId: partido.id, slot },
+      }),
     });
     const json = await res.json();
     if (res.ok) {
@@ -211,19 +256,102 @@ export default function CuadrosPage() {
           )
         )}
 
+        {/* Botón mover jugadores */}
+        {tieneCuadro && !iniciado && !cerrado && (
+          moverMode ? (
+            <button
+              onClick={() => { setMoverMode(false); setSelectedSwap(null); }}
+              className="px-4 py-2 border border-slate-600 text-slate-400 hover:border-slate-500 hover:text-white font-bold rounded-lg transition-colors text-sm"
+            >
+              Cancelar movimiento
+            </button>
+          ) : (
+            <button
+              onClick={() => setMoverMode(true)}
+              className="px-4 py-2 border border-navy-600 text-slate-300 hover:border-court hover:text-court font-bold rounded-lg transition-colors text-sm"
+            >
+              ⇄ Mover jugadores
+            </button>
+          )
+        )}
+
+        {iniciado && tieneCuadro && (
+          <span className="text-xs text-slate-600 border border-navy-800 rounded-lg px-3 py-2">
+            Torneo iniciado — posiciones bloqueadas
+          </span>
+        )}
+
         {msg && (
           <p className={`text-sm ${msg.startsWith("Error") ? "text-red-400" : "text-court"}`}>{msg}</p>
         )}
       </div>
 
+      {/* Banner modo mover */}
+      {moverMode && (
+        <div
+          className="mb-4 px-4 py-3 rounded-xl text-sm font-medium flex items-center gap-3"
+          style={{ backgroundColor: "rgba(200,255,0,0.08)", border: "1px solid rgba(200,255,0,0.25)", color: "#C8FF00" }}
+        >
+          <span className="text-lg">⇄</span>
+          {selectedSwap
+            ? <>Ahora haz clic en el jugador con quien intercambiar a <strong>{selectedSwap.apellido}, {selectedSwap.nombre}</strong></>
+            : <>Haz clic en el jugador que quieres mover</>
+          }
+        </div>
+      )}
+
+      {/* Lista de inscritos */}
+      {categoria && (
+        <div className="mb-8 p-4 bg-navy-900 border border-navy-700 rounded-xl">
+          <div className="flex items-center gap-3 mb-3">
+            <h3 className="text-sm font-bold text-white">
+              Inscritos en {categoria}
+            </h3>
+            <span className="text-xs bg-navy-800 border border-navy-600 text-slate-400 px-2 py-0.5 rounded-full">
+              {todosInscritos.length}
+            </span>
+          </div>
+
+          {todosInscritos.length === 0 ? (
+            <p className="text-slate-600 text-sm">No hay inscripciones en esta categoría.</p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {todosInscritos.map((j) => {
+                const enCuadro = !jugadoresDisponibles.find((d) => d.id === j.id);
+                return (
+                  <span
+                    key={j.id}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm border"
+                    style={
+                      enCuadro && tieneCuadro
+                        ? { backgroundColor: "rgba(200,255,0,0.08)", borderColor: "rgba(200,255,0,0.3)", color: "#C8FF00" }
+                        : { backgroundColor: "#161616", borderColor: "#2E2E2E", color: "#888" }
+                    }
+                  >
+                    {enCuadro && tieneCuadro && (
+                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                        <path d="M1.5 5L4 7.5L8.5 2.5" stroke="#C8FF00" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    )}
+                    {j.apellido}, {j.nombre}
+                  </span>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Cuadro */}
       {partidos.length > 0 ? (
         <BracketView
           partidos={partidos}
-          onResult={(p) => setResultModal(p)}
-          onSchedule={(p) => setScheduleModal(p)}
-          onAddPlayer={!cerrado ? (p, slot) => setAddPlayerTarget({ partido: p, slot }) : undefined}
-          onRemovePlayer={!cerrado ? removerJugador : undefined}
+          onResult={!moverMode ? (p) => setResultModal(p) : undefined}
+          onSchedule={!moverMode ? (p) => setScheduleModal(p) : undefined}
+          onAddPlayer={!cerrado && !moverMode ? (p, slot) => setAddPlayerTarget({ partido: p, slot }) : undefined}
+          onRemovePlayer={!cerrado && !moverMode ? removerJugador : undefined}
+          onSwapSelect={moverMode ? handleSwapSelect : undefined}
+          swapSelected={moverMode ? (selectedSwap ? { partidoId: selectedSwap.partidoId, slot: selectedSwap.slot } : null) : null}
         />
       ) : (
         !tieneCuadro && (

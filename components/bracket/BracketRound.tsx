@@ -32,9 +32,11 @@ interface Props {
   onSchedule?: (partido: Partido) => void;
   onAddPlayer?: (partido: Partido, slot: "jugador1_id" | "jugador2_id") => void;
   onRemovePlayer?: (partido: Partido, slot: "jugador1_id" | "jugador2_id") => void;
+  onSwapSelect?: (partido: Partido, slot: "jugador1_id" | "jugador2_id") => void;
+  swapSelected?: { partidoId: string; slot: "jugador1_id" | "jugador2_id" } | null;
 }
 
-export function BracketRound({ ronda, partidos, totalHeight, onResult, onSchedule, onAddPlayer, onRemovePlayer }: Props) {
+export function BracketRound({ ronda, partidos, totalHeight, onResult, onSchedule, onAddPlayer, onRemovePlayer, onSwapSelect, swapSelected }: Props) {
   const sorted = [...partidos].sort((a, b) => a.posicion - b.posicion);
 
   return (
@@ -73,6 +75,14 @@ export function BracketRound({ ronda, partidos, totalHeight, onResult, onSchedul
               onRemovePlayer && ronda === "primera_ronda"
                 ? (slot) => onRemovePlayer(p, slot)
                 : undefined
+            }
+            onSwapSelect={
+              onSwapSelect && ronda === "primera_ronda"
+                ? (slot) => onSwapSelect(p, slot)
+                : undefined
+            }
+            swapHighlight={
+              swapSelected?.partidoId === p.id ? swapSelected.slot : null
             }
           />
         ))}

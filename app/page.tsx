@@ -11,62 +11,83 @@ const RONDA_LABELS: Record<string, string> = {
 export default async function HomePage() {
   const supabase = await createClient();
 
-  const { data: { user } } = await supabase.auth.getUser();
+  // getSession() reads from cookie — no network call to Supabase Auth
+  const { data: { session } } = await supabase.auth.getSession();
+  const user = session?.user ?? null;
 
-  const { data: torneos } = await supabase
-    .from("torneo")
-    .select("id, nombre, edicion, anio, estado, imagen_url, descripcion")
-    .in("estado", ["activo", "cerrado"])
-    .order("anio", { ascending: false })
-    .order("edicion", { ascending: false });
+  // Fire all independent queries in parallel.
+  // Nested select collapses torneos → cuadros → partidos into a single round-trip.
+  const [torneosRes, amistososPublicosRes, userDataRes] = await Promise.all([
+    supabase
+      .from("torneo")
+      .select(`
+        id, nombre, edicion, anio, estado, imagen_url, descripcion,
+        cuadros:cuadro(
+          id, categoria, torneo_id,
+          partidos:partido(
+            id, ronda, cancha, resultado, ganador_id,
+            jugador1:jugador!jugador1_id(nombre, apellido),
+            jugador2:jugador!jugador2_id(nombre, apellido)
+          )
+        )
+      `)
+      .in("estado", ["activo", "cerrado"])
+      .order("anio", { ascending: false })
+      .order("edicion", { ascending: false }),
 
-  const torneoIds = (torneos ?? []).map((t) => t.id);
+    supabase
+      .from("partido")
+      .select(`
+        id, ronda, cancha, resultado,
+        jugador1:jugador!jugador1_id(nombre, apellido),
+        jugador2:jugador!jugador2_id(nombre, apellido)
+      `)
+      .is("cuadro_id", null)
+      .is("ganador_id", null)
+      .not("resultado", "is", null),
 
-  const { data: cuadros } = torneoIds.length
-    ? await supabase.from("cuadro").select("id, torneo_id, categoria").in("torneo_id", torneoIds)
-    : { data: [] };
+    user
+      ? Promise.all([
+          (supabase as any)
+            .from("partido_amistoso")
+            .select("*, retador:retador_id(nombre, apellido), rival:rival_id(nombre, apellido)")
+            .or(`retador_id.eq.${user.id},rival_id.eq.${user.id}`)
+            .in("estado", ["pendiente", "aceptado", "en_curso"])
+            .order("created_at", { ascending: false }),
+          supabase.from("jugador").select("id, nombre, apellido").neq("id", user.id).order("apellido"),
+          supabase.from("club").select("id, nombre").order("nombre"),
+        ])
+      : Promise.resolve(null),
+  ]);
 
-  const cuadroIds = (cuadros ?? []).map((c) => c.id);
-
-  const { data: partidosTorneo } = cuadroIds.length
-    ? await supabase
-        .from("partido")
-        .select(`
-          id, ronda, cancha, resultado, cuadro_id,
-          jugador1:jugador!jugador1_id(nombre, apellido),
-          jugador2:jugador!jugador2_id(nombre, apellido),
-          cuadro:cuadro_id(categoria, torneo_id)
-        `)
-        .in("cuadro_id", cuadroIds)
-        .is("ganador_id", null)
-        .not("jugador1_id", "is", null)
-        .not("jugador2_id", "is", null)
-    : { data: [] };
-
-  const { data: partidosAmistoso } = await supabase
-    .from("partido")
-    .select(`
-      id, ronda, cancha, resultado,
-      jugador1:jugador!jugador1_id(nombre, apellido),
-      jugador2:jugador!jugador2_id(nombre, apellido)
-    `)
-    .is("cuadro_id", null)
-    .is("ganador_id", null)
-    .not("resultado", "is", null);
-
-  const partidosEnVivo = [
-    ...((partidosTorneo ?? []) as any[]).filter((p) => p.resultado !== null),
-    ...((partidosAmistoso ?? []) as any[]),
-  ];
+  // Derive cuadros and partidos from nested torneos response
+  const torneosConCuadros = (torneosRes.data ?? []) as any[];
+  const torneoIds = torneosConCuadros.map((t) => t.id);
+  const allCuadros = torneosConCuadros.flatMap((t: any) => t.cuadros ?? []);
 
   const cuadrosPorTorneo: Record<string, string[]> = {};
-  for (const c of cuadros ?? []) {
+  for (const c of allCuadros) {
     if (!cuadrosPorTorneo[c.torneo_id]) cuadrosPorTorneo[c.torneo_id] = [];
     cuadrosPorTorneo[c.torneo_id].push(c.categoria);
   }
 
-  const torneosActivos = (torneos ?? []).filter((t) => t.estado === "activo");
+  const allTorneoPartidos = allCuadros.flatMap((c: any) =>
+    (c.partidos ?? []).map((p: any) => ({
+      ...p,
+      cuadro: { categoria: c.categoria, torneo_id: c.torneo_id },
+    }))
+  );
 
+  const partidosEnVivo = [
+    ...allTorneoPartidos.filter((p: any) => !p.ganador_id && p.resultado !== null && p.jugador1 && p.jugador2),
+    ...((amistososPublicosRes.data ?? []) as any[]),
+  ];
+
+  // Strip cuadros from torneos for display
+  const torneos = torneosConCuadros.map(({ cuadros: _c, ...t }: any) => t);
+  const torneosActivos = torneos.filter((t: any) => t.estado === "activo");
+
+  // misInscripciones depends on torneoIds — run after torneos resolves
   const { data: misInscripciones } = user && torneoIds.length
     ? await supabase
         .from("inscripcion")
@@ -76,29 +97,14 @@ export default async function HomePage() {
     : { data: [] };
 
   const inscritoEnTorneoIds = new Set((misInscripciones ?? []).map((i) => i.torneo_id));
+  const torneosActivosSinInscripcion = torneosActivos.filter((t: any) => !inscritoEnTorneoIds.has(t.id));
 
-  const torneosActivosSinInscripcion = torneosActivos.filter((t) => !inscritoEnTorneoIds.has(t.id));
-
-  // Amistosos del jugador logueado
   let misAmistosos: any[] = [];
   let todosJugadores: any[] = [];
   let clubsLista: any[] = [];
 
-  if (user) {
-    const [amistososRes, jugadoresRes, clubsRes] = await Promise.all([
-      (supabase as any)
-        .from("partido_amistoso")
-        .select("*, retador:retador_id(nombre, apellido), rival:rival_id(nombre, apellido)")
-        .or(`retador_id.eq.${user.id},rival_id.eq.${user.id}`)
-        .in("estado", ["pendiente", "aceptado", "en_curso"])
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("jugador")
-        .select("id, nombre, apellido")
-        .neq("id", user.id)
-        .order("apellido"),
-      supabase.from("club").select("id, nombre").order("nombre"),
-    ]);
+  if (userDataRes) {
+    const [amistososRes, jugadoresRes, clubsRes] = userDataRes;
     misAmistosos = amistososRes.data ?? [];
     todosJugadores = jugadoresRes.data ?? [];
     clubsLista = clubsRes.data ?? [];

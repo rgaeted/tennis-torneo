@@ -29,6 +29,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  revalidatePath(`/admin/torneo/${torneoId}/inscripciones`);
   return NextResponse.json({ ok: true, id: data.id });
 }
 
@@ -53,6 +54,7 @@ export async function PATCH(request: Request) {
     }
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+  revalidatePath(`/admin/torneo/${insc.torneo_id}/inscripciones`);
   return NextResponse.json({ ok: true });
 }
 
@@ -67,5 +69,6 @@ export async function DELETE(request: Request) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+  revalidatePath(`/admin/torneo/${insc.torneo_id}/inscripciones`);
   return NextResponse.json({ ok: true });
 }

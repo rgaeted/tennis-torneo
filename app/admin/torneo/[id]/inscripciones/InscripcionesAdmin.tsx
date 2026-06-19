@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 type Inscripcion = {
@@ -21,6 +21,9 @@ const ESTADO_COLORS: Record<string, string> = {
 export default function InscripcionesAdmin({ inscripciones, categorias }: { inscripciones: Inscripcion[]; categorias: Categoria[] }) {
   const router = useRouter();
   const [lista, setLista] = useState<Inscripcion[]>(inscripciones);
+
+  // Sincronizar cuando el Server Component re-renderiza con nuevas inscripciones (tras router.refresh())
+  useEffect(() => { setLista(inscripciones); }, [inscripciones]);
   const [editando, setEditando] = useState<Inscripcion | null>(null);
   const [categoria, setCategoria] = useState<Categoria>("primera");
   const [estadoPago, setEstadoPago] = useState<"pagado" | "pendiente" | "rechazado">("pagado");

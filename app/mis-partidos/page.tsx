@@ -13,28 +13,32 @@ const RONDA_LABEL: Record<string, string> = {
 
 export default async function MisPartidosPage() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+
+  // getSession() reads from cookie — no network call; middleware already guards this route
+  const { data: { session } } = await supabase.auth.getSession();
+  const user = session?.user ?? null;
   if (!user) redirect("/login");
 
-  const { data: jugador } = await supabase
-    .from("jugador")
-    .select("nombre, apellido")
-    .eq("id", user.id)
-    .single();
+  // Fetch jugador profile and partidos in parallel
+  const [jugadorRes, partidosRes] = await Promise.all([
+    supabase.from("jugador").select("nombre, apellido").eq("id", user.id).single(),
+    supabase
+      .from("partido")
+      .select(`
+        id, ronda, resultado, ganador_id, hora_inicio,
+        jugador1:jugador!jugador1_id(id, nombre, apellido),
+        jugador2:jugador!jugador2_id(id, nombre, apellido),
+        ganador:jugador!ganador_id(nombre, apellido),
+        cuadro:cuadro_id(categoria, torneo:torneo_id(id, nombre, edicion, anio))
+      `)
+      .or(`jugador1_id.eq.${user.id},jugador2_id.eq.${user.id}`)
+      .not("jugador1_id", "is", null)
+      .not("jugador2_id", "is", null)
+      .order("hora_inicio", { ascending: false, nullsFirst: false }),
+  ]);
 
-  const { data: partidos, error: partidosError } = await supabase
-    .from("partido")
-    .select(`
-      id, ronda, resultado, ganador_id, hora_inicio,
-      jugador1:jugador!jugador1_id(id, nombre, apellido),
-      jugador2:jugador!jugador2_id(id, nombre, apellido),
-      ganador:jugador!ganador_id(nombre, apellido),
-      cuadro:cuadro_id(categoria, torneo:torneo_id(id, nombre, edicion, anio))
-    `)
-    .or(`jugador1_id.eq.${user.id},jugador2_id.eq.${user.id}`)
-    .not("jugador1_id", "is", null)
-    .not("jugador2_id", "is", null)
-    .order("hora_inicio", { ascending: false, nullsFirst: false });
+  const jugador = jugadorRes.data;
+  const { data: partidos, error: partidosError } = partidosRes;
 
   const todos = (partidos ?? []) as any[];
 

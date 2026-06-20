@@ -7,12 +7,16 @@ interface Props {
   partidoId: string;
   jugador1: Jugador;
   jugador2: Jugador;
+  initialGanadorId?: string;
+  initialResultado?: { j1: number; j2: number }[];
   onSuccess: () => void;
 }
 
-export function ResultForm({ partidoId, jugador1, jugador2, onSuccess }: Props) {
-  const [ganadorId, setGanadorId] = useState(jugador1.id);
-  const [sets, setSets] = useState([{ j1: "", j2: "" }]);
+export function ResultForm({ partidoId, jugador1, jugador2, initialGanadorId, initialResultado, onSuccess }: Props) {
+  const [ganadorId, setGanadorId] = useState(initialGanadorId ?? jugador1.id);
+  const [sets, setSets] = useState<{ j1: string; j2: string }[]>(
+    initialResultado?.map((s) => ({ j1: String(s.j1), j2: String(s.j2) })) ?? [{ j1: "", j2: "" }]
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -24,7 +28,7 @@ export function ResultForm({ partidoId, jugador1, jugador2, onSuccess }: Props) 
     const resultado = sets.map((s) => ({ j1: Number(s.j1), j2: Number(s.j2) }));
 
     const res = await fetch("/api/admin/resultados", {
-      method: "POST",
+      method: initialGanadorId ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ partidoId, ganadorId, resultado }),
     });
@@ -95,7 +99,7 @@ export function ResultForm({ partidoId, jugador1, jugador2, onSuccess }: Props) 
         disabled={loading}
         className="w-full py-2 bg-court text-white font-bold rounded-lg text-sm hover:bg-court-dark disabled:opacity-50 transition-colors"
       >
-        {loading ? "Guardando..." : "Confirmar resultado"}
+        {loading ? "Guardando..." : initialGanadorId ? "Guardar cambios" : "Confirmar resultado"}
       </button>
     </form>
   );

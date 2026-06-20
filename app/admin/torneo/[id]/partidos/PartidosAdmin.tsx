@@ -192,6 +192,16 @@ export default function PartidosAdmin({ partidos, numCanchas }: { partidos: Part
                           Resultado →
                         </button>
                       )}
+
+                      {/* Modificar resultado existente */}
+                      {p.ganador_id && tieneJugadores && (
+                        <button
+                          onClick={() => setResultModal(p)}
+                          className="text-xs px-2.5 py-1 border border-navy-700 text-slate-400 hover:border-navy-500 hover:text-white rounded-lg transition-colors"
+                        >
+                          Modificar
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -221,6 +231,8 @@ export default function PartidosAdmin({ partidos, numCanchas }: { partidos: Part
               partidoId={resultModal.id}
               jugador1={resultModal.jugador1}
               jugador2={resultModal.jugador2}
+              initialGanadorId={resultModal.ganador_id ?? undefined}
+              initialResultado={(resultModal.resultado as { j1: number; j2: number }[] | null) ?? undefined}
               onSuccess={() => { setResultModal(null); router.refresh(); }}
             />
             <button onClick={() => setResultModal(null)} className="mt-3 w-full py-2 text-slate-500 hover:text-slate-300 text-sm transition-colors">

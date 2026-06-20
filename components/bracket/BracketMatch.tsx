@@ -29,7 +29,7 @@ export function BracketMatch({
   onResult, onSchedule, onAddPlayer, onRemovePlayer,
   onSwapSelect, swapHighlight,
 }: Props) {
-  const abbr = (j: Jugador | null) => j ? `${j.nombre[0]}. ${j.apellido}` : null;
+  const fullName = (j: Jugador | null) => j ? `${j.nombre} ${j.apellido}` : null;
   const sets = (resultado as SetScore[] | null) ?? [];
   const puedeCargar = onResult && jugador1Id && jugador2Id && !ganadorId;
   const esFinal = ronda === "final";
@@ -45,7 +45,7 @@ export function BracketMatch({
 
   return (
     <div
-      style={{ backgroundColor: CARD_BG, border: `1px solid ${BORDER}`, width: esFinal ? "224px" : "208px" }}
+      style={{ backgroundColor: CARD_BG, border: `1px solid ${BORDER}`, width: esFinal ? "260px" : "240px" }}
       className="rounded-xl overflow-hidden text-sm"
     >
       {esFinal && (
@@ -79,14 +79,14 @@ export function BracketMatch({
                       textUnderlineOffset: "3px",
                     }}
                   >
-                    {abbr(jugador)}
+                    {fullName(jugador)}
                   </button>
                 ) : (
                   <span
                     style={{ color: win ? "#FFFFFF" : lose ? "#383838" : "#888888" }}
                     className="font-medium truncate"
                   >
-                    {abbr(jugador)}
+                    {fullName(jugador)}
                   </span>
                 )
               ) : (

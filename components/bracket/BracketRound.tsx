@@ -40,7 +40,7 @@ export function BracketRound({ ronda, partidos, totalHeight, onResult, onSchedul
   const sorted = [...partidos].sort((a, b) => a.posicion - b.posicion);
 
   return (
-    <div className="flex flex-col" style={{ minWidth: ronda === "final" ? "240px" : "224px" }}>
+    <div className="flex flex-col" style={{ minWidth: ronda === "final" ? "276px" : "256px" }}>
       <div
         style={{ color: "#555", borderBottom: "1px solid #1E1E1E" }}
         className="text-[10px] uppercase tracking-widest font-semibold pb-2 mb-4"

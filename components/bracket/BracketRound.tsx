@@ -49,42 +49,45 @@ export function BracketRound({ ronda, partidos, totalHeight, onResult, onSchedul
       </div>
 
       <div
-        className="flex flex-col justify-around"
-        style={{ height: `${totalHeight}px` }}
+        style={{
+          display: "grid",
+          gridTemplateRows: `repeat(${sorted.length}, ${totalHeight / sorted.length}px)`,
+        }}
       >
         {sorted.map((p) => (
-          <BracketMatch
-            key={p.id}
-            jugador1={p.jugador1}
-            jugador2={p.jugador2}
-            ganadorId={p.ganador_id}
-            jugador1Id={p.jugador1_id}
-            jugador2Id={p.jugador2_id}
-            resultado={p.resultado}
-            horaInicio={p.hora_inicio}
-            cancha={p.cancha}
-            ronda={ronda}
-            onResult={onResult ? () => onResult(p) : undefined}
-            onSchedule={onSchedule ? () => onSchedule(p) : undefined}
-            onAddPlayer={
-              onAddPlayer && ronda === "primera_ronda"
-                ? (slot) => onAddPlayer(p, slot)
-                : undefined
-            }
-            onRemovePlayer={
-              onRemovePlayer && ronda === "primera_ronda"
-                ? (slot) => onRemovePlayer(p, slot)
-                : undefined
-            }
-            onSwapSelect={
-              onSwapSelect && ronda === "primera_ronda"
-                ? (slot) => onSwapSelect(p, slot)
-                : undefined
-            }
-            swapHighlight={
-              swapSelected?.partidoId === p.id ? swapSelected.slot : null
-            }
-          />
+          <div key={p.id} style={{ display: "flex", alignItems: "center" }}>
+            <BracketMatch
+              jugador1={p.jugador1}
+              jugador2={p.jugador2}
+              ganadorId={p.ganador_id}
+              jugador1Id={p.jugador1_id}
+              jugador2Id={p.jugador2_id}
+              resultado={p.resultado}
+              horaInicio={p.hora_inicio}
+              cancha={p.cancha}
+              ronda={ronda}
+              onResult={onResult ? () => onResult(p) : undefined}
+              onSchedule={onSchedule ? () => onSchedule(p) : undefined}
+              onAddPlayer={
+                onAddPlayer && ronda === "primera_ronda"
+                  ? (slot) => onAddPlayer(p, slot)
+                  : undefined
+              }
+              onRemovePlayer={
+                onRemovePlayer && ronda === "primera_ronda"
+                  ? (slot) => onRemovePlayer(p, slot)
+                  : undefined
+              }
+              onSwapSelect={
+                onSwapSelect && ronda === "primera_ronda"
+                  ? (slot) => onSwapSelect(p, slot)
+                  : undefined
+              }
+              swapHighlight={
+                swapSelected?.partidoId === p.id ? swapSelected.slot : null
+              }
+            />
+          </div>
         ))}
       </div>
     </div>

@@ -78,7 +78,7 @@ export default async function BracketPage({ params }: { params: Promise<{ catego
     <>
       <NavBar />
       <div className="min-h-screen">
-        <div className="max-w-7xl mx-auto px-6 py-8 flex gap-8 items-start">
+        <div className="max-w-7xl mx-auto px-4 py-6 flex flex-col lg:flex-row gap-6 lg:gap-8 items-start">
 
           {/* ── IZQUIERDA: cuadro ─────────────────────────────────── */}
           <div className="flex-1 min-w-0 overflow-x-auto">
@@ -105,7 +105,7 @@ export default async function BracketPage({ params }: { params: Promise<{ catego
           </div>
 
           {/* ── DERECHA: sidebar ──────────────────────────────────── */}
-          <div className="w-72 flex-shrink-0 space-y-3 pt-1">
+          <div className="w-full lg:w-72 lg:flex-shrink-0 space-y-3 pt-1">
             <h2 className="text-xs font-bold uppercase tracking-widest" style={{ color: "#555" }}>
               Próximos partidos
             </h2>

@@ -5,7 +5,7 @@ import { BracketRound, type Partido } from "./BracketRound";
 export type { Partido };
 
 const ORDEN_RONDAS = ["primera_ronda", "segunda_ronda", "cuartos", "semis", "final"];
-const SLOT_H = 128;
+const SLOT_H = 160;
 
 interface Props {
   partidos: Partido[];

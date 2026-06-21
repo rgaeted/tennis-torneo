@@ -69,7 +69,7 @@ export function BracketMatch({
           <div
             key={i}
             style={{ borderBottom: `1px solid ${BORDER}` }}
-            className="px-3 py-2.5 flex items-center gap-1"
+            className="px-3 py-2 flex items-center gap-1"
           >
             {id ? (
               onSwapSelect ? (

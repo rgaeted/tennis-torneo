@@ -1,5 +1,4 @@
 import { createClient } from "@/lib/supabase/server";
-import Link from "next/link";
 import EstadoSelector from "./EstadoSelector";
 import CategoriasEditor from "./CategoriasEditor";
 import TorneoDetalleEditor from "./TorneoDetalleEditor";
@@ -59,33 +58,14 @@ export default async function TorneoDetailPage({ params }: { params: Promise<{ i
     partidos: ((partidos ?? []) as any[]).filter((p) => p.cuadro?.id === c.id),
   }));
 
-  const accesos = [
-    { href: `/admin/torneo/${id}/inscripciones`, label: "Inscripciones" },
-    { href: `/admin/torneo/${id}/cuadros`, label: "Cuadros" },
-    { href: `/admin/torneo/${id}/partidos`, label: "Lista de partidos" },
-  ];
-
   return (
     <div>
       {/* Header */}
-      <div className="flex items-start justify-between mb-4">
-        <div>
-          <h1 className="text-2xl font-bold mb-1">{torneo.nombre}</h1>
-          <p className="text-slate-500 text-sm">
-            Edición {torneo.edicion} · {torneo.anio} · ${torneo.monto_inscripcion.toLocaleString("es-CL")}
-          </p>
-        </div>
-        <div className="flex gap-2 flex-shrink-0">
-          {accesos.map(({ href, label }) => (
-            <Link
-              key={href}
-              href={href}
-              className="text-xs px-3 py-1.5 bg-navy-900 border border-navy-700 rounded-lg text-slate-400 hover:text-white hover:border-navy-500 transition-colors"
-            >
-              {label}
-            </Link>
-          ))}
-        </div>
+      <div className="mb-4">
+        <h1 className="text-2xl font-bold mb-1">{torneo.nombre}</h1>
+        <p className="text-slate-500 text-sm">
+          Edición {torneo.edicion} · {torneo.anio} · ${torneo.monto_inscripcion.toLocaleString("es-CL")}
+        </p>
       </div>
 
       <div className="mb-6">

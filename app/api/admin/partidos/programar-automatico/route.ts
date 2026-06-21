@@ -76,14 +76,13 @@ export async function POST(request: Request) {
   const cuadroIds = (cuadros ?? []).map((c) => c.id);
   if (!cuadroIds.length) return NextResponse.json({ ok: true, programados: 0 });
 
-  // Partidos con ambos jugadores y sin horario asignado
+  // Partidos con ambos jugadores (reprograma también los que ya tienen horario)
   const { data: partidos } = await admin
     .from("partido")
     .select("id")
     .in("cuadro_id", cuadroIds)
     .not("jugador1_id", "is", null)
-    .not("jugador2_id", "is", null)
-    .is("hora_inicio", null);
+    .not("jugador2_id", "is", null);
 
   if (!partidos?.length) return NextResponse.json({ ok: true, programados: 0 });
 

@@ -96,17 +96,17 @@ export default function PartidosAdmin({ partidos, numCanchas, torneoId }: { part
   }
 
   const slotsXDia = Math.floor((22 * 60 - 9 * 60) / 90) + 1; // 9 slots (9:00 … 21:00)
-  const sinHorario = partidos.filter(p => !p.hora_inicio && p.jugador1 && p.jugador2).length;
+  const conJugadores = partidos.filter(p => p.jugador1 && p.jugador2).length;
 
   return (
     <>
-      {torneoId && sinHorario > 0 && (
+      {torneoId && conJugadores > 0 && (
         <div className="flex justify-end mb-4">
           <button
             onClick={() => { setAutoModal(true); setAutoError(null); setAutoOk(null); }}
             className="text-sm px-4 py-2 border border-navy-600 text-slate-300 hover:border-navy-500 hover:text-white rounded-lg transition-colors"
           >
-            🎲 Programar automáticamente ({sinHorario} sin horario)
+            🎲 Programar automáticamente ({conJugadores} partidos)
           </button>
         </div>
       )}
@@ -274,7 +274,7 @@ export default function PartidosAdmin({ partidos, numCanchas, torneoId }: { part
 
             <div className="space-y-4">
               <p className="text-xs text-slate-500 leading-relaxed">
-                Asigna cancha y horario de forma aleatoria. Los partidos duran 90 min, desde las 09:00 hasta las 21:00.
+                Asigna cancha y horario de forma aleatoria a todos los partidos con jugadores, reemplazando cualquier horario existente. Los partidos duran 90 min, desde las 09:00 hasta las 21:00.
                 {numCanchas ? ` El club tiene ${numCanchas} cancha${numCanchas !== 1 ? "s" : ""} (${slotsXDia * numCanchas} partidos por día).` : ""}
               </p>
 

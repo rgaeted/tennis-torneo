@@ -40,7 +40,7 @@ export default async function PartidosPage({ params }: { params: Promise<{ id: s
   return (
     <div>
       <h1 className="text-2xl font-bold mb-6">Partidos</h1>
-      <PartidosAdmin partidos={(partidos ?? []) as any[]} numCanchas={(torneo as any)?.club?.num_canchas} />
+      <PartidosAdmin partidos={(partidos ?? []) as any[]} numCanchas={(torneo as any)?.club?.num_canchas} torneoId={id} />
     </div>
   );
 }

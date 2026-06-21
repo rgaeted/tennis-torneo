@@ -52,7 +52,7 @@ export default async function OrganizadorPartidosPage({ params }: { params: Prom
         ← {(torneo as any).nombre}
       </Link>
       <h1 className="text-2xl font-bold text-white mt-3 mb-6">Partidos</h1>
-      <PartidosAdmin partidos={(partidos ?? []) as any[]} numCanchas={(torneo as any)?.club?.num_canchas} />
+      <PartidosAdmin partidos={(partidos ?? []) as any[]} numCanchas={(torneo as any)?.club?.num_canchas} torneoId={id} />
     </div>
   );
 }

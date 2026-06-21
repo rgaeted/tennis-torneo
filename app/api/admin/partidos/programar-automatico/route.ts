@@ -6,23 +6,37 @@ const START_MINUTES = 9 * 60;   // 09:00
 const LAST_START   = 22 * 60;   // 22:00 — último horario permitido
 const DURATION     = 90;        // minutos por partido
 
-function generarSlots(fechaInicio: Date, fechaFin: Date, numCanchas: number) {
-  const slots: { fecha: Date; cancha: number }[] = [];
+// Chile: UTC-4 en invierno (may-ago), UTC-3 en verano
+function chileOffset(ymd: string): string {
+  const month = parseInt(ymd.substring(5, 7), 10);
+  return month >= 5 && month <= 8 ? "-04:00" : "-03:00";
+}
 
-  const dia = new Date(fechaInicio);
-  dia.setHours(0, 0, 0, 0);
-  const fin = new Date(fechaFin);
-  fin.setHours(23, 59, 59, 999);
+function pad2(n: number) { return String(n).padStart(2, "0"); }
 
-  while (dia <= fin) {
+// Itera días entre las dos fechas (strings "YYYY-MM-DD") inclusivas
+function* iterarDias(desde: string, hasta: string) {
+  const fin = new Date(hasta + "T12:00:00Z");
+  const cur = new Date(desde + "T12:00:00Z");
+  while (cur <= fin) {
+    yield cur.toISOString().substring(0, 10);
+    cur.setUTCDate(cur.getUTCDate() + 1);
+  }
+}
+
+function generarSlots(fechaInicioStr: string, fechaFinStr: string, numCanchas: number) {
+  const slots: { fechaISO: string; cancha: number }[] = [];
+
+  for (const ymd of iterarDias(fechaInicioStr, fechaFinStr)) {
+    const offset = chileOffset(ymd);
     for (let min = START_MINUTES; min <= LAST_START; min += DURATION) {
+      const hh = pad2(Math.floor(min / 60));
+      const mm = pad2(min % 60);
+      const fechaISO = `${ymd}T${hh}:${mm}:00${offset}`;
       for (let c = 1; c <= numCanchas; c++) {
-        const slot = new Date(dia);
-        slot.setHours(Math.floor(min / 60), min % 60, 0, 0);
-        slots.push({ fecha: slot, cancha: c });
+        slots.push({ fechaISO, cancha: c });
       }
     }
-    dia.setDate(dia.getDate() + 1);
   }
 
   // Fisher-Yates shuffle para asignación aleatoria
@@ -73,7 +87,7 @@ export async function POST(request: Request) {
 
   if (!partidos?.length) return NextResponse.json({ ok: true, programados: 0 });
 
-  const slots = generarSlots(new Date(fechaInicio), new Date(fechaFin), numCanchas);
+  const slots = generarSlots(fechaInicio, fechaFin, numCanchas);
 
   if (slots.length < partidos.length) {
     return NextResponse.json(
@@ -86,7 +100,7 @@ export async function POST(request: Request) {
     partidos.map((p, i) =>
       admin
         .from("partido")
-        .update({ hora_inicio: slots[i].fecha.toISOString(), cancha: String(slots[i].cancha) })
+        .update({ hora_inicio: slots[i].fechaISO, cancha: String(slots[i].cancha) })
         .eq("id", p.id)
     )
   );

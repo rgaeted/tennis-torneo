@@ -24,7 +24,7 @@ export async function crearPreferencia(input: CreatePreferenceInput) {
           title: input.titulo,
           quantity: 1,
           unit_price: input.monto,
-          currency_id: "ARS",
+          currency_id: "CLP",
         },
       ],
       payer: { email: input.jugadorEmail },

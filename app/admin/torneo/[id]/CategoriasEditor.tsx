@@ -1,10 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-
-type Categoria = "cuarta" | "tercera" | "segunda" | "primera" | "damas" | "dobles";
-
-const TODAS: Categoria[] = ["cuarta", "tercera", "segunda", "primera", "damas", "dobles"];
+import { CATEGORIAS_ORDEN, labelCategoria, type Categoria } from "@/lib/categorias";
 
 export default function CategoriasEditor({ torneoId, categoriasActuales }: { torneoId: string; categoriasActuales: Categoria[] }) {
   const router = useRouter();
@@ -25,7 +22,7 @@ export default function CategoriasEditor({ torneoId, categoriasActuales }: { tor
   async function guardar() {
     setLoading(true);
     setMsg(null);
-    const categorias = TODAS.filter((c) => seleccionadas.has(c));
+    const categorias = CATEGORIAS_ORDEN.filter((c) => seleccionadas.has(c));
     const res = await fetch(`/api/admin/torneo/${torneoId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -47,19 +44,19 @@ export default function CategoriasEditor({ torneoId, categoriasActuales }: { tor
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      {TODAS.map((cat) => {
+      {CATEGORIAS_ORDEN.map((cat) => {
         const activa = seleccionadas.has(cat);
         return (
           <button
             key={cat}
             onClick={() => toggle(cat)}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium border capitalize transition-colors ${
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
               activa
                 ? "border-court bg-court/20 text-court"
                 : "border-navy-700 text-slate-500 hover:border-navy-500 hover:text-slate-300"
             }`}
           >
-            {cat}
+            {labelCategoria(cat)}
           </button>
         );
       })}

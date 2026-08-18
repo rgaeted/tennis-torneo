@@ -2,6 +2,8 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
+import { labelCategoria, type Categoria } from "@/lib/categorias";
+
 type Inscripcion = {
   id: string;
   categoria: string;
@@ -9,8 +11,6 @@ type Inscripcion = {
   estado_pago: "pagado" | "pendiente" | "rechazado";
   jugador: { nombre: string; apellido: string } | null;
 };
-
-type Categoria = "cuarta" | "tercera" | "segunda" | "primera" | "damas" | "dobles";
 
 const ESTADO_COLORS: Record<string, string> = {
   pagado: "bg-court/20 text-court",
@@ -105,7 +105,7 @@ export default function InscripcionesAdmin({ inscripciones, categorias }: { insc
                 <td className="py-3 pr-4 font-medium">
                   {i.jugador?.apellido}, {i.jugador?.nombre}
                 </td>
-                <td className="py-3 pr-4 capitalize text-slate-300">{i.categoria}</td>
+                <td className="py-3 pr-4 text-slate-300">{labelCategoria(i.categoria as Categoria)}</td>
                 <td className="py-3 pr-4 text-slate-300">${i.monto.toLocaleString("es-CL")}</td>
                 <td className="py-3">
                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${ESTADO_COLORS[i.estado_pago] ?? ""}`}>
@@ -138,7 +138,7 @@ export default function InscripcionesAdmin({ inscripciones, categorias }: { insc
                 <label className="text-xs text-slate-400 mb-1.5 block">Categoría</label>
                 <select value={categoria} onChange={(e) => setCategoria(e.target.value as Categoria)} className={selectClass}>
                   {categorias.map((c) => (
-                    <option key={c} value={c} className="capitalize">{c}</option>
+                    <option key={c} value={c}>{labelCategoria(c)}</option>
                   ))}
                 </select>
               </div>

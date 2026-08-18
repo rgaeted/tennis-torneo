@@ -2,13 +2,12 @@
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
-import type { Database } from "@/lib/supabase/types";
+import { CATEGORIAS_ORDEN, labelCategoria, type Categoria } from "@/lib/categorias";
 
-type Categoria = Database["public"]["Enums"]["categoria_tipo"];
 type Club = { id: string; nombre: string; num_canchas: number };
 type Org = { id: string; nombre: string };
 
-const TODAS_CATEGORIAS: Categoria[] = ["cuarta", "tercera", "segunda", "primera", "damas", "dobles"];
+const TODAS_CATEGORIAS = CATEGORIAS_ORDEN;
 
 export default function NuevoTorneoPage() {
   const router = useRouter();
@@ -162,13 +161,13 @@ export default function NuevoTorneoPage() {
                   key={c}
                   type="button"
                   onClick={() => toggleCategoria(c)}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors capitalize ${
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
                     activa
                       ? "border-court bg-court/20 text-court"
                       : "border-navy-700 text-slate-500 hover:border-navy-500"
                   }`}
                 >
-                  {c}
+                  {labelCategoria(c)}
                 </button>
               );
             })}

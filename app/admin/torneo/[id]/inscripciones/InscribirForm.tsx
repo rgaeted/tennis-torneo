@@ -2,8 +2,9 @@
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 
+import { labelCategoria, type Categoria } from "@/lib/categorias";
+
 type Jugador = { id: string; nombre: string; apellido: string; categoria_habitual: string | null };
-type Categoria = "cuarta" | "tercera" | "segunda" | "primera" | "damas" | "dobles";
 
 export default function InscribirForm({
   torneoId,
@@ -139,7 +140,7 @@ export default function InscribirForm({
                 <label className="text-xs text-slate-400 mb-1.5 block">Categoría</label>
                 <select value={categoria} onChange={(e) => setCategoria(e.target.value as Categoria)} className={selectClass}>
                   {categorias.map((c) => (
-                    <option key={c} value={c} className="capitalize">{c}</option>
+                    <option key={c} value={c}>{labelCategoria(c)}</option>
                   ))}
                 </select>
               </div>

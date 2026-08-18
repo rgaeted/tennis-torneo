@@ -270,7 +270,7 @@ export type Database = {
     Functions: {}
     Enums: {
       estado_torneo: "borrador" | "activo" | "cerrado"
-      categoria_tipo: "cuarta" | "tercera" | "segunda" | "primera" | "damas" | "dobles"
+      categoria_tipo: "open" | "cuarta" | "tercera" | "segunda" | "primera" | "damas" | "dobles"
       estado_pago: "pendiente" | "pagado" | "rechazado"
       ronda_tipo: "primera_ronda" | "segunda_ronda" | "cuartos" | "semis" | "final"
       tamano_bracket: "8" | "16" | "32"

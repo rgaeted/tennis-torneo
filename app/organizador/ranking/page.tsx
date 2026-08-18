@@ -1,16 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { CATEGORIAS_ORDEN, labelCategoria, PUNTOS_RANKING } from "@/lib/categorias";
 
-// ─── Tabla de puntos Opción B ────────────────────────────────────────────────
-const PUNTOS = {
-  primera: { campeon: 500, finalista: 300, semis: 150, cuartos: 75,  primera_ronda: 25 },
-  segunda: { campeon: 350, finalista: 200, semis: 100, cuartos: 50,  primera_ronda: 15 },
-  damas:   { campeon: 300, finalista: 180, semis: 90,  cuartos: 45,  primera_ronda: 12 },
-  tercera: { campeon: 200, finalista: 120, semis: 60,  cuartos: 30,  primera_ronda: 8  },
-  dobles:  { campeon: 150, finalista: 90,  semis: 45,  cuartos: 20,  primera_ronda: 6  },
-  cuarta:  { campeon: 100, finalista: 60,  semis: 30,  cuartos: 15,  primera_ronda: 5  },
-} as const;
+const PUNTOS = PUNTOS_RANKING;
 
 type Categoria = keyof typeof PUNTOS;
 type Logro = keyof typeof PUNTOS[Categoria];
@@ -22,8 +15,6 @@ const RONDA_ORDEN: Record<string, number> = {
   semis: 3,
   final: 4,
 };
-
-const CATEGORIAS_ORDEN: Categoria[] = ["primera", "segunda", "damas", "tercera", "dobles", "cuarta"];
 
 function logro(ronda: string, esGanador: boolean): Logro {
   if (ronda === "final") return esGanador ? "campeon" : "finalista";
@@ -187,7 +178,7 @@ export default async function RankingPage({
   // ─── UI ────────────────────────────────────────────────────────────────
   const tabs: { key: string; label: string }[] = [
     { key: "general", label: "General" },
-    ...CATEGORIAS_ORDEN.map((c) => ({ key: c, label: c.charAt(0).toUpperCase() + c.slice(1) })),
+    ...CATEGORIAS_ORDEN.map((c) => ({ key: c, label: labelCategoria(c) })),
   ];
 
   return (
@@ -281,7 +272,7 @@ export default async function RankingPage({
                     <div className="flex gap-2 mt-0.5 flex-wrap">
                       {CATEGORIAS_ORDEN.filter((c) => entry.porCategoria[c]).map((c) => (
                         <span key={c} style={{ color: "#555" }} className="text-[10px]">
-                          {c.charAt(0).toUpperCase() + c.slice(1)}: {entry.porCategoria[c]}
+                          {labelCategoria(c)}: {entry.porCategoria[c]}
                         </span>
                       ))}
                     </div>
@@ -321,7 +312,7 @@ export default async function RankingPage({
                 <tr>
                   <th style={{ color: "#555" }} className="text-left pb-2 font-medium">Logro</th>
                   {CATEGORIAS_ORDEN.map((c) => (
-                    <th key={c} style={{ color: "#555" }} className="text-right pb-2 font-medium capitalize px-2">{c}</th>
+                    <th key={c} style={{ color: "#555" }} className="text-right pb-2 font-medium px-2">{labelCategoria(c)}</th>
                   ))}
                 </tr>
               </thead>

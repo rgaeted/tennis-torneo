@@ -3,9 +3,8 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
-
-type Set = { j1: number; j2: number; tb?: { j1: number; j2: number } };
-type Resultado = Set[];
+import type { Resultado } from "@/lib/live/types";
+import { formatPuntos, inTiebreak, isSetComplete } from "@/lib/live/tennisScore";
 type Partido = {
   id: string;
   ronda: string;
@@ -191,6 +190,27 @@ export default function LiveDisplayPage() {
 
           {/* Divider */}
           <div className="border-t border-navy-700 mb-6" />
+
+          {(() => {
+            const last = resultado[resultado.length - 1] ?? { j1: 0, j2: 0 };
+            if (isFinished || isSetComplete(last)) return null;
+            return (
+              <div className="text-center mb-6">
+                {inTiebreak(last) ? (
+                  <p className="text-ball text-4xl md:text-6xl font-black tabular-nums">
+                    TB {last.tb?.j1 ?? 0}–{last.tb?.j2 ?? 0}
+                  </p>
+                ) : (
+                  <p className="text-ball text-5xl md:text-7xl font-black tabular-nums tracking-tight">
+                    {formatPuntos(last.puntos ?? { j1: 0, j2: 0 })}
+                  </p>
+                )}
+                <p className="text-slate-500 text-xs uppercase tracking-[0.3em] mt-2">
+                  {inTiebreak(last) ? "Tie-break" : "Game"}
+                </p>
+              </div>
+            );
+          })()}
 
           {/* Jugador 2 */}
           <div className="flex items-center">

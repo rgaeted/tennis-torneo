@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { avanzarGanadorConByes } from "@/lib/bracket/byes";
-import { stripPuntos } from "@/lib/live/tennisScore";
+import { stripPuntos, isSetComplete, setsWon } from "@/lib/live/tennisScore";
 import type { Resultado } from "@/lib/live/types";
 import { NextResponse } from "next/server";
 import type { Database } from "@/lib/supabase/types";
@@ -43,6 +43,12 @@ export async function POST(request: Request) {
 
   for (let i = 0; i < resultado.length; i++) {
     const s = resultado[i];
+    if (!isSetComplete(s)) {
+      if (i !== resultado.length - 1) {
+        return NextResponse.json({ error: `Set ${i + 1}: incompleto` }, { status: 400 });
+      }
+      continue;
+    }
     const errS = errorSet(s.j1, s.j2);
     if (errS) return NextResponse.json({ error: `Set ${i + 1}: ${errS}` }, { status: 400 });
     const errTb = errorTiebreak(s);
@@ -50,11 +56,13 @@ export async function POST(request: Request) {
   }
 
   const resultadoLimpio = stripPuntos(resultado as Resultado);
+  const cerrados = resultadoLimpio.filter(isSetComplete);
+  if (cerrados.length === 0) {
+    return NextResponse.json({ error: "No hay sets registrados" }, { status: 400 });
+  }
 
-  const setsJ1 = resultadoLimpio.filter((s) =>
-    (s.j1 === 6 && s.j2 <= 4) || (s.j1 === 7 && (s.j2 === 5 || s.j2 === 6))
-  ).length;
-  const setsJ2 = resultadoLimpio.length - setsJ1;
+  const setsJ1 = setsWon(cerrados, "j1");
+  const setsJ2 = setsWon(cerrados, "j2");
 
   if (setsJ1 === setsJ2)
     return NextResponse.json({ error: "El marcador está empatado en sets — el partido no puede quedar sin ganador" }, { status: 400 });

@@ -1,6 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { avanzarGanadorConByes } from "@/lib/bracket/byes";
+import { stripPuntos } from "@/lib/live/tennisScore";
+import type { Resultado } from "@/lib/live/types";
 import { NextResponse } from "next/server";
 import type { Database } from "@/lib/supabase/types";
 
@@ -47,10 +49,12 @@ export async function POST(request: Request) {
     if (errTb) return NextResponse.json({ error: `Set ${i + 1}: ${errTb}` }, { status: 400 });
   }
 
-  const setsJ1 = resultado.filter((s) =>
+  const resultadoLimpio = stripPuntos(resultado as Resultado);
+
+  const setsJ1 = resultadoLimpio.filter((s) =>
     (s.j1 === 6 && s.j2 <= 4) || (s.j1 === 7 && (s.j2 === 5 || s.j2 === 6))
   ).length;
-  const setsJ2 = resultado.length - setsJ1;
+  const setsJ2 = resultadoLimpio.length - setsJ1;
 
   if (setsJ1 === setsJ2)
     return NextResponse.json({ error: "El marcador está empatado en sets — el partido no puede quedar sin ganador" }, { status: 400 });
@@ -78,7 +82,7 @@ export async function POST(request: Request) {
 
   const ganadorId = setsJ1 > setsJ2 ? partido.jugador1_id : partido.jugador2_id;
 
-  await admin.from("partido").update({ ganador_id: ganadorId, resultado }).eq("id", partidoId);
+  await admin.from("partido").update({ ganador_id: ganadorId, resultado: resultadoLimpio }).eq("id", partidoId);
 
   if (partido.cuadro_id) {
     await avanzarGanadorConByes(

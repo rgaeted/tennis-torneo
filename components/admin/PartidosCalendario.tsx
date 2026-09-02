@@ -7,18 +7,21 @@ import {
   labelCategoria,
   type Categoria,
 } from "@/lib/categorias";
-import { DURATION } from "@/lib/scheduling/autoSchedule";
+import { DURATION, clasificarPartido, type PartidoScheduleInput } from "@/lib/scheduling/autoSchedule";
 import { labelsPartido, primeraRondaDelCuadro, type Ronda } from "@/lib/bracket/matchLabels";
 
 type Jugador = { id: string; nombre: string; apellido: string };
 
 export type PartidoCalendario = {
   id: string;
+  cuadro_id: string;
   ronda: string;
   posicion: number;
   cancha: string | null;
   hora_inicio: string | null;
   ganador_id: string | null;
+  jugador1_id: string | null;
+  jugador2_id: string | null;
   resultado: unknown;
   started_at: string | null;
   ended_at: string | null;
@@ -26,7 +29,7 @@ export type PartidoCalendario = {
   jugador1: Jugador | null;
   jugador2: Jugador | null;
   ganador: { nombre: string; apellido: string } | null;
-      cuadro: { categoria: string; tamano?: number | string } | null;
+  cuadro: { categoria: string; tamano?: number | string } | null;
 };
 
 const RONDA_LABELS: Record<string, string> = {
@@ -178,13 +181,29 @@ export function PartidosCalendario({
   fechaFin?: string;
   onSelectPartido: (p: PartidoCalendario) => void;
 }) {
+  const partidosPorCuadro = useMemo(() => {
+    const map = new Map<string, PartidoScheduleInput[]>();
+    for (const p of partidos) {
+      const list = map.get(p.cuadro_id) ?? [];
+      list.push(p as PartidoScheduleInput);
+      map.set(p.cuadro_id, list);
+    }
+    return map;
+  }, [partidos]);
+
   const programados = useMemo(
     () => partidos.filter((p) => p.hora_inicio && p.cancha),
     [partidos]
   );
   const sinProgramar = useMemo(
-    () => partidos.filter((p) => !p.hora_inicio || !p.cancha),
-    [partidos]
+    () =>
+      partidos.filter((p) => {
+        if (p.hora_inicio && p.cancha) return false;
+        const delCuadro = partidosPorCuadro.get(p.cuadro_id) ?? [];
+        if (clasificarPartido(p as PartidoScheduleInput, delCuadro) === "bye") return false;
+        return true;
+      }),
+    [partidos, partidosPorCuadro]
   );
 
   const categoriasPresentes = useMemo(() => {

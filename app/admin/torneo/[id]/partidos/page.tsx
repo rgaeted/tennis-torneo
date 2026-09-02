@@ -8,7 +8,7 @@ export default async function PartidosPage({ params }: { params: Promise<{ id: s
 
   const [{ data: torneo }, { data: cuadros }] = await Promise.all([
     supabase.from("torneo").select("fecha_inicio, fecha_fin, club:club_id(num_canchas)").eq("id", id).single(),
-    supabase.from("cuadro").select("id, categoria").eq("torneo_id", id),
+    supabase.from("cuadro").select("id, categoria, tamano").eq("torneo_id", id),
   ]);
 
   if (!cuadros?.length) {
@@ -30,7 +30,7 @@ export default async function PartidosPage({ params }: { params: Promise<{ id: s
       jugador1:jugador!jugador1_id(id, nombre, apellido),
       jugador2:jugador!jugador2_id(id, nombre, apellido),
       ganador:jugador!ganador_id(nombre, apellido),
-      cuadro:cuadro_id(categoria)
+      cuadro:cuadro_id(categoria, tamano)
     `)
     .in("cuadro_id", cuadroIds)
     .order("hora_inicio", { ascending: true, nullsFirst: false })

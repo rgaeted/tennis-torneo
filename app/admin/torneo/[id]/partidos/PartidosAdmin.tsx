@@ -7,8 +7,11 @@ import { ProgramarAutomaticoModal } from "@/components/admin/ProgramarAutomatico
 import { ResultForm } from "@/components/admin/ResultForm";
 import { PartidosCalendario, type PartidoCalendario } from "@/components/admin/PartidosCalendario";
 import { colorCategoria, labelCategoria, type Categoria } from "@/lib/categorias";
+import { labelsPartido, primeraRondaDelCuadro, type Ronda } from "@/lib/bracket/matchLabels";
 
-type Partido = PartidoCalendario;
+type Partido = PartidoCalendario & {
+  cuadro: { categoria: string; tamano?: number | string } | null;
+};
 
 const RONDA_LABELS: Record<string, string> = {
   primera_ronda: "1ª Ronda",
@@ -33,12 +36,24 @@ function formatFechaHora(iso: string | null) {
   };
 }
 
+function labelsForPartido(p: Partido) {
+  const tamano = p.cuadro?.tamano ? (Number(p.cuadro.tamano) as 8 | 16 | 32) : undefined;
+  return labelsPartido({
+    ronda: p.ronda as Ronda,
+    posicion: p.posicion,
+    jugador1_id: p.jugador1?.id ?? null,
+    jugador2_id: p.jugador2?.id ?? null,
+    jugador1: p.jugador1,
+    jugador2: p.jugador2,
+    primeraRonda: primeraRondaDelCuadro(tamano),
+  });
+}
+
 function labelJugadores(p: Partido): string {
   if (p.ganador_id && p.ganador) {
     return `${p.ganador.nombre} ${p.ganador.apellido} (ganó)`;
   }
-  const j1 = p.jugador1 ? `${p.jugador1.nombre} ${p.jugador1.apellido}` : p.jugador2 ? "BYE" : "—";
-  const j2 = p.jugador2 ? `${p.jugador2.nombre} ${p.jugador2.apellido}` : p.jugador1 ? "TBD" : "BYE";
+  const { j1, j2 } = labelsForPartido(p);
   return `${j1} vs ${j2}`;
 }
 
@@ -323,19 +338,16 @@ export default function PartidosAdmin({
                           ) : null}
                         </div>
                       ) : (
-                        <span className="text-slate-300">
-                          {p.jugador1
-                            ? `${p.jugador1.nombre} ${p.jugador1.apellido}`
-                            : p.jugador2
-                              ? "TBD"
-                              : "BYE"}
-                          <span className="text-slate-600 mx-1.5">vs</span>
-                          {p.jugador2
-                            ? `${p.jugador2.nombre} ${p.jugador2.apellido}`
-                            : p.jugador1
-                              ? "TBD"
-                              : "BYE"}
-                        </span>
+                        (() => {
+                          const { j1, j2 } = labelsForPartido(p);
+                          return (
+                            <span className="text-slate-300">
+                              {j1}
+                              <span className="text-slate-600 mx-1.5">vs</span>
+                              {j2}
+                            </span>
+                          );
+                        })()
                       )}
                     </td>
 
@@ -448,16 +460,8 @@ export default function PartidosAdmin({
       {scheduleModal && (
         <ProgramarModal
           partidoId={scheduleModal.id}
-          jugador1={
-            scheduleModal.jugador1
-              ? `${scheduleModal.jugador1.nombre} ${scheduleModal.jugador1.apellido}`
-              : "BYE"
-          }
-          jugador2={
-            scheduleModal.jugador2
-              ? `${scheduleModal.jugador2.nombre} ${scheduleModal.jugador2.apellido}`
-              : "BYE"
-          }
+          jugador1={labelsForPartido(scheduleModal).j1}
+          jugador2={labelsForPartido(scheduleModal).j2}
           horaInicioActual={scheduleModal.hora_inicio}
           canchaActual={scheduleModal.cancha}
           numCanchas={numCanchas}

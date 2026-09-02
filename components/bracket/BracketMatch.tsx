@@ -1,3 +1,5 @@
+import { codigoPartido, labelSlot, type Ronda } from "@/lib/bracket/matchLabels";
+
 type SetScore = { j1: number; j2: number };
 interface Jugador { id?: string; nombre: string; apellido: string; }
 
@@ -11,6 +13,8 @@ interface Props {
   horaInicio?: string | null;
   cancha?: string | null;
   ronda?: string;
+  posicion?: number;
+  primeraRonda?: string;
   onResult?: () => void;
   onSchedule?: () => void;
   onAddPlayer?: (slot: "jugador1_id" | "jugador2_id") => void;
@@ -25,11 +29,24 @@ const BORDER = "#242424";
 
 export function BracketMatch({
   jugador1, jugador2, ganadorId, jugador1Id, jugador2Id,
-  resultado, horaInicio, cancha, ronda,
+  resultado, horaInicio, cancha, ronda, posicion = 0, primeraRonda = "primera_ronda",
   onResult, onSchedule, onAddPlayer, onRemovePlayer,
   onSwapSelect, swapHighlight,
 }: Props) {
-  const fullName = (j: Jugador | null) => j ? `${j.nombre} ${j.apellido}` : null;
+  const rondaTyped = (ronda ?? "primera_ronda") as Ronda;
+  const primeraRondaTyped = (primeraRonda ?? "primera_ronda") as Ronda;
+
+  const slotLabel = (jugador: Jugador | null, id: string | null, slot: "j1" | "j2") =>
+    labelSlot({
+      ronda: rondaTyped,
+      posicion,
+      slot,
+      jugadorId: id,
+      jugador,
+      primeraRonda: primeraRondaTyped,
+    });
+
+  const codigo = codigoPartido(rondaTyped, posicion);
   const sets = (resultado as SetScore[] | null) ?? [];
   const puedeCargar = onResult && jugador1Id && jugador2Id && !ganadorId;
   const esFinal = ronda === "final";
@@ -49,8 +66,8 @@ export function BracketMatch({
     : null;
 
   const slots = [
-    { jugador: jugador1, id: jugador1Id, slot: "jugador1_id" as const },
-    { jugador: jugador2, id: jugador2Id, slot: "jugador2_id" as const },
+    { label: slotLabel(jugador1, jugador1Id, "j1"), id: jugador1Id, slot: "jugador1_id" as const, isBye: !jugador1Id && rondaTyped === primeraRondaTyped },
+    { label: slotLabel(jugador2, jugador2Id, "j2"), id: jugador2Id, slot: "jugador2_id" as const, isBye: !jugador2Id && rondaTyped === primeraRondaTyped },
   ];
 
   const j1wins = ganadorId && ganadorId === jugador1Id;
@@ -66,13 +83,22 @@ export function BracketMatch({
           style={{ backgroundColor: "#1E1E1E", borderBottom: `1px solid ${BORDER}`, color: NEON }}
           className="px-3 py-1.5 flex items-center justify-between text-[10px] font-bold uppercase tracking-widest"
         >
-          <span>Final</span>
+          <span>Final · {codigo}</span>
           {scheduleLabel && <span>{scheduleLabel}</span>}
         </div>
       )}
 
+      {!esFinal && (
+        <div
+          style={{ backgroundColor: "#141414", borderBottom: `1px solid ${BORDER}`, color: "#666" }}
+          className="px-3 py-1 text-[10px] font-semibold tracking-wide"
+        >
+          {codigo}
+        </div>
+      )}
+
       {/* Filas de jugadores — nombre ocupa todo el ancho */}
-      {slots.map(({ jugador, id, slot }, i) => {
+      {slots.map(({ label, id, slot, isBye }, i) => {
         const win = !!(ganadorId && ganadorId === id);
         const lose = !!(ganadorId && id && ganadorId !== id);
         return (
@@ -92,18 +118,23 @@ export function BracketMatch({
                     textUnderlineOffset: "3px",
                   }}
                 >
-                  {fullName(jugador)}
+                  {label}
                 </button>
               ) : (
                 <span
                   style={{ color: win ? "#FFFFFF" : lose ? "#444" : "#888888" }}
                   className="font-medium truncate flex-1"
                 >
-                  {fullName(jugador)}
+                  {label}
                 </span>
               )
             ) : (
-              <span style={{ color: "#383838" }} className="text-xs italic flex-1">—</span>
+              <span
+                style={{ color: isBye ? "#555" : "#777" }}
+                className={`text-xs flex-1 ${isBye ? "italic" : "font-mono tracking-tight"}`}
+              >
+                {label}
+              </span>
             )}
 
             {onAddPlayer && !id && (

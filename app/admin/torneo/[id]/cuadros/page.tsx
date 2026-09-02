@@ -8,6 +8,7 @@ import { ProgramarModal } from "@/components/admin/ProgramarModal";
 import { ProgramarAutomaticoModal } from "@/components/admin/ProgramarAutomaticoModal";
 import { AgregarJugadorModal } from "@/components/admin/AgregarJugadorModal";
 import { contarAsignables, type PartidoScheduleInput } from "@/lib/scheduling/autoSchedule";
+import { inferirPrimeraRonda, labelsPartido, type Ronda } from "@/lib/bracket/matchLabels";
 
 type JugadorDisponible = { id: string; nombre: string; apellido: string };
 type AddPlayerTarget = { partido: Partido; slot: "jugador1_id" | "jugador2_id" } | null;
@@ -77,7 +78,7 @@ export default function CuadrosPage() {
     const [{ data: cuadro }, { data: inscripcionesData }] = await Promise.all([
       supabase
         .from("cuadro")
-        .select("id, cerrado")
+        .select("id, cerrado, tamano")
         .eq("torneo_id", torneoId)
         .eq("categoria", categoria as any)
         .maybeSingle(),
@@ -120,8 +121,9 @@ export default function CuadrosPage() {
     const ps = (partidosData as unknown as Partido[]) ?? [];
     setPartidos(ps);
 
+    const primeraRonda = inferirPrimeraRonda(ps);
     const enCuadro = new Set<string>();
-    ps.filter((p) => p.ronda === "primera_ronda").forEach((p) => {
+    ps.filter((p) => p.ronda === primeraRonda).forEach((p) => {
       if (p.jugador1_id) enCuadro.add(p.jugador1_id);
       if (p.jugador2_id) enCuadro.add(p.jugador2_id);
     });
@@ -397,8 +399,28 @@ export default function CuadrosPage() {
       {scheduleModal && (
         <ProgramarModal
           partidoId={scheduleModal.id}
-          jugador1={scheduleModal.jugador1 ? `${scheduleModal.jugador1.nombre} ${scheduleModal.jugador1.apellido}` : "BYE"}
-          jugador2={scheduleModal.jugador2 ? `${scheduleModal.jugador2.nombre} ${scheduleModal.jugador2.apellido}` : "BYE"}
+          jugador1={
+            labelsPartido({
+              ronda: scheduleModal.ronda as Ronda,
+              posicion: scheduleModal.posicion,
+              jugador1_id: scheduleModal.jugador1_id,
+              jugador2_id: scheduleModal.jugador2_id,
+              jugador1: scheduleModal.jugador1,
+              jugador2: scheduleModal.jugador2,
+              primeraRonda: inferirPrimeraRonda(partidos),
+            }).j1
+          }
+          jugador2={
+            labelsPartido({
+              ronda: scheduleModal.ronda as Ronda,
+              posicion: scheduleModal.posicion,
+              jugador1_id: scheduleModal.jugador1_id,
+              jugador2_id: scheduleModal.jugador2_id,
+              jugador1: scheduleModal.jugador1,
+              jugador2: scheduleModal.jugador2,
+              primeraRonda: inferirPrimeraRonda(partidos),
+            }).j2
+          }
           horaInicioActual={scheduleModal.hora_inicio ?? null}
           canchaActual={scheduleModal.cancha ?? null}
           numCanchas={numCanchas}

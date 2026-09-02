@@ -8,6 +8,7 @@ import {
   type Categoria,
 } from "@/lib/categorias";
 import { DURATION } from "@/lib/scheduling/autoSchedule";
+import { labelsPartido, primeraRondaDelCuadro, type Ronda } from "@/lib/bracket/matchLabels";
 
 type Jugador = { id: string; nombre: string; apellido: string };
 
@@ -24,7 +25,7 @@ export type PartidoCalendario = {
   jugador1: Jugador | null;
   jugador2: Jugador | null;
   ganador: { nombre: string; apellido: string } | null;
-  cuadro: { categoria: string } | null;
+      cuadro: { categoria: string; tamano?: number | string } | null;
 };
 
 const RONDA_LABELS: Record<string, string> = {
@@ -70,17 +71,24 @@ function generarSlotsHorario(): number[] {
   return slots;
 }
 
-function nombreJugador(j: Jugador | null): string {
-  if (!j) return "TBD";
-  return `${j.nombre} ${j.apellido}`;
+function labelsForPartido(p: PartidoCalendario) {
+  const tamano = p.cuadro?.tamano ? (Number(p.cuadro.tamano) as 8 | 16 | 32) : undefined;
+  return labelsPartido({
+    ronda: p.ronda as Ronda,
+    posicion: p.posicion,
+    jugador1_id: p.jugador1?.id ?? null,
+    jugador2_id: p.jugador2?.id ?? null,
+    jugador1: p.jugador1,
+    jugador2: p.jugador2,
+    primeraRonda: primeraRondaDelCuadro(tamano),
+  });
 }
 
 function labelPartido(p: PartidoCalendario): string {
   if (p.ganador_id && p.ganador) {
     return `${p.ganador.nombre} ${p.ganador.apellido}`;
   }
-  const j1 = p.jugador1 ? nombreJugador(p.jugador1) : p.jugador2 ? "BYE" : "—";
-  const j2 = p.jugador2 ? nombreJugador(p.jugador2) : p.jugador1 ? "TBD" : "BYE";
+  const { j1, j2 } = labelsForPartido(p);
   return `${j1} vs ${j2}`;
 }
 

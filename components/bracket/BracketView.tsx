@@ -1,6 +1,7 @@
 "use client";
 import { useRef } from "react";
 import { BracketRound, type Partido } from "./BracketRound";
+import { inferirPrimeraRonda } from "@/lib/bracket/matchLabels";
 
 export type { Partido };
 
@@ -80,6 +81,7 @@ export function BracketView({ partidos, onResult, onSchedule, onAddPlayer, onRem
   }, {});
 
   const rondasConPartidos = ORDEN_RONDAS.filter((r) => porRonda[r]?.length > 0);
+  const primeraRonda = inferirPrimeraRonda(partidos);
   const maxMatches = Math.max(...rondasConPartidos.map(r => porRonda[r].length), 1);
   const totalHeight = maxMatches * SLOT_H;
 
@@ -106,6 +108,7 @@ export function BracketView({ partidos, onResult, onSchedule, onAddPlayer, onRem
               ronda={ronda}
               partidos={porRonda[ronda]}
               totalHeight={totalHeight}
+              primeraRonda={primeraRonda}
               onResult={onResult}
               onSchedule={onSchedule}
               onAddPlayer={onAddPlayer}

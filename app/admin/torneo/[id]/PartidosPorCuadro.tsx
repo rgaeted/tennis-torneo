@@ -3,12 +3,16 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ProgramarModal } from "@/components/admin/ProgramarModal";
 import { ResultForm } from "@/components/admin/ResultForm";
+import { labelsPartido, primeraRondaDelCuadro, type Ronda } from "@/lib/bracket/matchLabels";
 
 type Jugador = { id: string; nombre: string; apellido: string };
 type Set = { j1: number; j2: number };
 type Partido = {
   id: string;
   ronda: string;
+  posicion: number;
+  jugador1_id?: string | null;
+  jugador2_id?: string | null;
   cancha: string | null;
   hora_inicio: string | null;
   ganador_id: string | null;
@@ -20,8 +24,22 @@ type Partido = {
 type Cuadro = {
   id: string;
   categoria: string;
+  tamano?: number | string;
   partidos: Partido[];
 };
+
+function labelsForPartido(p: Partido, cuadro: Cuadro) {
+  const tamano = cuadro.tamano ? (Number(cuadro.tamano) as 8 | 16 | 32) : undefined;
+  return labelsPartido({
+    ronda: p.ronda as Ronda,
+    posicion: p.posicion,
+    jugador1_id: p.jugador1_id ?? p.jugador1?.id ?? null,
+    jugador2_id: p.jugador2_id ?? p.jugador2?.id ?? null,
+    jugador1: p.jugador1,
+    jugador2: p.jugador2,
+    primeraRonda: primeraRondaDelCuadro(tamano),
+  });
+}
 
 const RONDA_LABELS: Record<string, string> = {
   primera_ronda: "1ª Ronda", segunda_ronda: "2ª Ronda",
@@ -57,7 +75,7 @@ export default function PartidosPorCuadro({ cuadros, torneoId, numCanchas }: { c
       <div className="space-y-8">
         {cuadros.map((cuadro) => {
           const porRonda = RONDA_ORDER.reduce<Record<string, Partido[]>>((acc, r) => {
-            const ps = cuadro.partidos.filter((p) => p.ronda === r && (p.jugador1 || p.jugador2));
+            const ps = cuadro.partidos.filter((p) => p.ronda === r);
             if (ps.length) acc[r] = ps;
             return acc;
           }, {});
@@ -111,9 +129,10 @@ export default function PartidosPorCuadro({ cuadros, torneoId, numCanchas }: { c
                                     </span>
                                     <span className="text-slate-600 mx-2">vs</span>
                                     <span className="text-slate-600">
-                                      {p.jugador1?.id === p.ganador_id
-                                        ? (p.jugador2 ? `${p.jugador2.nombre} ${p.jugador2.apellido}` : "BYE")
-                                        : (p.jugador1 ? `${p.jugador1.nombre} ${p.jugador1.apellido}` : "BYE")}
+                                      {(() => {
+                                        const { j1, j2 } = labelsForPartido(p, cuadro);
+                                        return p.jugador1?.id === p.ganador_id ? j2 : j1;
+                                      })()}
                                     </span>
                                   </span>
                                   {formatResultado(p.resultado) && (
@@ -123,11 +142,16 @@ export default function PartidosPorCuadro({ cuadros, torneoId, numCanchas }: { c
                                   )}
                                 </span>
                               ) : (
-                                <span className="text-slate-300">
-                                  {p.jugador1 ? `${p.jugador1.nombre} ${p.jugador1.apellido}` : "BYE"}
-                                  <span className="text-slate-600 mx-2">vs</span>
-                                  {p.jugador2 ? `${p.jugador2.nombre} ${p.jugador2.apellido}` : "BYE"}
-                                </span>
+                                (() => {
+                                  const { j1, j2 } = labelsForPartido(p, cuadro);
+                                  return (
+                                    <span className="text-slate-300">
+                                      {j1}
+                                      <span className="text-slate-600 mx-2">vs</span>
+                                      {j2}
+                                    </span>
+                                  );
+                                })()
                               )}
                             </div>
 
@@ -181,8 +205,18 @@ export default function PartidosPorCuadro({ cuadros, torneoId, numCanchas }: { c
       {scheduleModal && (
         <ProgramarModal
           partidoId={scheduleModal.id}
-          jugador1={scheduleModal.jugador1 ? `${scheduleModal.jugador1.nombre} ${scheduleModal.jugador1.apellido}` : "BYE"}
-          jugador2={scheduleModal.jugador2 ? `${scheduleModal.jugador2.nombre} ${scheduleModal.jugador2.apellido}` : "BYE"}
+          jugador1={
+            labelsForPartido(
+              scheduleModal,
+              cuadros.find((c) => c.partidos.some((p) => p.id === scheduleModal.id)) ?? cuadros[0]
+            ).j1
+          }
+          jugador2={
+            labelsForPartido(
+              scheduleModal,
+              cuadros.find((c) => c.partidos.some((p) => p.id === scheduleModal.id)) ?? cuadros[0]
+            ).j2
+          }
           horaInicioActual={scheduleModal.hora_inicio}
           canchaActual={scheduleModal.cancha}
           numCanchas={numCanchas}

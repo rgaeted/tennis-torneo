@@ -1,7 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { slotsPorDia } from "@/lib/scheduling/autoSchedule";
+import {
+  DIAS_SEMANA,
+  HORARIO_DIA_DEFAULT,
+  horariosPorDefecto,
+  slotsPorDia,
+  type DiaSemana,
+  type HorarioDia,
+} from "@/lib/scheduling/autoSchedule";
 
 type Props = {
   torneoId: string;
@@ -22,11 +29,20 @@ export function ProgramarAutomaticoModal({
 }: Props) {
   const [fechaInicio, setFechaInicio] = useState(fechaInicioDefault);
   const [fechaFin, setFechaFin] = useState(fechaFinDefault);
+  const [horarios, setHorarios] = useState<Record<DiaSemana, HorarioDia>>(horariosPorDefecto);
+  const [mostrarHorarios, setMostrarHorarios] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [okMsg, setOkMsg] = useState<string | null>(null);
 
   const slotsXDia = numCanchas ? slotsPorDia(numCanchas) : 0;
+
+  function setHorarioDia(key: DiaSemana, campo: keyof HorarioDia, valor: string) {
+    setHorarios((prev) => ({
+      ...prev,
+      [key]: { ...prev[key], [campo]: valor },
+    }));
+  }
 
   async function programar() {
     if (!fechaInicio || !fechaFin) return;
@@ -37,7 +53,7 @@ export function ProgramarAutomaticoModal({
     const res = await fetch("/api/admin/partidos/programar-automatico", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ torneoId, fechaInicio, fechaFin }),
+      body: JSON.stringify({ torneoId, fechaInicio, fechaFin, horariosPorDia: horarios }),
     });
     const json = await res.json();
     setLoading(false);
@@ -58,7 +74,10 @@ export function ProgramarAutomaticoModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4" onClick={onClose}>
-      <div className="bg-navy-900 border border-navy-700 rounded-2xl w-full max-w-sm p-6" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="bg-navy-900 border border-navy-700 rounded-2xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex justify-between items-center mb-5">
           <h2 className="text-lg font-bold">Programar automáticamente</h2>
           <button onClick={onClose} className="text-slate-500 hover:text-white text-xl leading-none">×</button>
@@ -66,10 +85,9 @@ export function ProgramarAutomaticoModal({
 
         <div className="space-y-4">
           <p className="text-xs text-slate-500 leading-relaxed">
-            Reserva cancha y horario para <strong className="text-slate-400">todo el torneo</strong> (todas las categorías y rondas) en un solo paso.
-            Se mezclan categorías para no dejar canchas vacías. Entre un partido y el siguiente del mismo cuadro hay un slot de descanso (90 min).
-            Los partidos duran 90 min, de 09:00 a 21:00. Se reemplazan horarios de partidos pendientes.
-            {numCanchas ? ` El club tiene ${numCanchas} cancha${numCanchas !== 1 ? "s" : ""} (${slotsXDia} partidos por día).` : ""}
+            Reserva cancha y horario para <strong className="text-slate-400">todo el torneo</strong> (todas las categorías y rondas).
+            Partidos de 90 min con descanso de un slot entre rondas del mismo cuadro.
+            {numCanchas ? ` ${numCanchas} cancha${numCanchas !== 1 ? "s" : ""} (~${slotsXDia} partidos/día con horario por defecto).` : ""}
           </p>
 
           <div>
@@ -91,6 +109,48 @@ export function ProgramarAutomaticoModal({
               min={fechaInicio}
               className="w-full px-3 py-2 bg-navy-950 border border-navy-700 rounded-lg text-sm text-white focus:outline-none focus:border-court"
             />
+          </div>
+
+          <div className="border border-navy-800 rounded-xl overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setMostrarHorarios((v) => !v)}
+              className="w-full flex items-center justify-between px-3 py-2.5 text-sm text-slate-300 hover:bg-navy-800/50 transition-colors"
+            >
+              <span>Horarios por día de la semana</span>
+              <span className="text-slate-500 text-xs">{mostrarHorarios ? "▲" : "▼"}</span>
+            </button>
+
+            {mostrarHorarios && (
+              <div className="px-3 pb-3 space-y-2 border-t border-navy-800">
+                <p className="text-[11px] text-slate-600 pt-2 leading-relaxed">
+                  Primer y último horario de inicio por día (ej. jueves desde las 17:00).
+                </p>
+                {DIAS_SEMANA.map(({ key, label }) => (
+                  <div key={key} className="grid grid-cols-[72px_1fr_1fr] gap-2 items-center text-xs">
+                    <span className="text-slate-400">{label}</span>
+                    <div>
+                      <label className="text-[10px] text-slate-600 block mb-0.5">Desde</label>
+                      <input
+                        type="time"
+                        value={horarios[key].inicio}
+                        onChange={(e) => setHorarioDia(key, "inicio", e.target.value)}
+                        className="w-full px-2 py-1.5 bg-navy-950 border border-navy-700 rounded-lg text-white focus:outline-none focus:border-court"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-slate-600 block mb-0.5">Hasta</label>
+                      <input
+                        type="time"
+                        value={horarios[key].fin ?? HORARIO_DIA_DEFAULT.fin}
+                        onChange={(e) => setHorarioDia(key, "fin", e.target.value)}
+                        className="w-full px-2 py-1.5 bg-navy-950 border border-navy-700 rounded-lg text-white focus:outline-none focus:border-court"
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {error && <p className="text-red-400 text-xs">{error}</p>}

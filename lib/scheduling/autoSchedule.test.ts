@@ -183,4 +183,13 @@ describe("generarSlots", () => {
     expect(slots[1]).toEqual({ fechaISO: "2026-06-05T09:00:00-04:00", cancha: 2 });
     expect(slots[2]).toEqual({ fechaISO: "2026-06-05T10:30:00-04:00", cancha: 1 });
   });
+
+  it("respeta hora de inicio por dia de semana", () => {
+    const slots = generarSlots("2026-06-04", "2026-06-04", 1, {
+      jue: { inicio: "17:00", fin: "21:00" },
+    });
+    expect(slots[0].fechaISO).toBe("2026-06-04T17:00:00-04:00");
+    expect(slots[1].fechaISO).toBe("2026-06-04T18:30:00-04:00");
+    expect(slots[2].fechaISO).toBe("2026-06-04T20:00:00-04:00");
+  });
 });

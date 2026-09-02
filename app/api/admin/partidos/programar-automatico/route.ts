@@ -8,7 +8,7 @@ import {
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
-  const { torneoId, fechaInicio, fechaFin } = await request.json();
+  const { torneoId, fechaInicio, fechaFin, horariosPorDia } = await request.json();
 
   if (!torneoId || !fechaInicio || !fechaFin) {
     return NextResponse.json({ error: "Faltan campos" }, { status: 400 });
@@ -45,7 +45,7 @@ export async function POST(request: Request) {
   const partidos = (partidosRaw ?? []) as PartidoScheduleInput[];
   if (!partidos.length) return NextResponse.json({ ok: true, programados: 0 });
 
-  const slots = generarSlots(fechaInicio, fechaFin, numCanchas);
+  const slots = generarSlots(fechaInicio, fechaFin, numCanchas, horariosPorDia);
   const result = asignarHorarios({ slots, partidos });
 
   if (!result.ok) {

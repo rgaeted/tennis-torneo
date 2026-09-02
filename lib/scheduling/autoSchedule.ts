@@ -43,6 +43,66 @@ export const LAST_START = 22 * 60;
 export const DURATION = 90;
 export const REST_MINUTES = 180;
 
+export type DiaSemana = "lun" | "mar" | "mie" | "jue" | "vie" | "sab" | "dom";
+
+export interface HorarioDia {
+  inicio: string;
+  fin?: string;
+}
+
+export const DIAS_SEMANA: { key: DiaSemana; label: string; jsDay: number }[] = [
+  { key: "lun", label: "Lunes", jsDay: 1 },
+  { key: "mar", label: "Martes", jsDay: 2 },
+  { key: "mie", label: "Miércoles", jsDay: 3 },
+  { key: "jue", label: "Jueves", jsDay: 4 },
+  { key: "vie", label: "Viernes", jsDay: 5 },
+  { key: "sab", label: "Sábado", jsDay: 6 },
+  { key: "dom", label: "Domingo", jsDay: 0 },
+];
+
+const JS_DAY_TO_KEY: Record<number, DiaSemana> = Object.fromEntries(
+  DIAS_SEMANA.map((d) => [d.jsDay, d.key])
+) as Record<number, DiaSemana>;
+
+export const HORARIO_DIA_DEFAULT: HorarioDia = { inicio: "09:00", fin: "21:00" };
+
+export function horariosPorDefecto(): Record<DiaSemana, HorarioDia> {
+  return Object.fromEntries(DIAS_SEMANA.map((d) => [d.key, { ...HORARIO_DIA_DEFAULT }])) as Record<
+    DiaSemana,
+    HorarioDia
+  >;
+}
+
+export function parseHoraMinutos(hhmm: string): number {
+  const [h, m] = hhmm.split(":").map(Number);
+  if (!Number.isFinite(h) || h < 0 || h > 23) throw new Error(`Hora inválida: ${hhmm}`);
+  if (!Number.isFinite(m) || m < 0 || m > 59) throw new Error(`Hora inválida: ${hhmm}`);
+  return h * 60 + m;
+}
+
+function weekdayFromYmd(ymd: string): number {
+  const [y, m, d] = ymd.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+}
+
+function horarioParaDia(
+  ymd: string,
+  horariosPorDia?: Partial<Record<DiaSemana, HorarioDia>>
+): { startMin: number; lastStartMin: number } {
+  if (!horariosPorDia) {
+    return { startMin: START_MINUTES, lastStartMin: LAST_START };
+  }
+
+  const key = JS_DAY_TO_KEY[weekdayFromYmd(ymd)] ?? "lun";
+  const h = { ...HORARIO_DIA_DEFAULT, ...horariosPorDia[key] };
+  const startMin = parseHoraMinutos(h.inicio);
+  const lastStartMin = parseHoraMinutos(h.fin ?? HORARIO_DIA_DEFAULT.fin!);
+  if (startMin > lastStartMin) {
+    throw new Error(`El inicio (${h.inicio}) no puede ser después del fin (${h.fin}) para ${key}`);
+  }
+  return { startMin, lastStartMin };
+}
+
 function pad2(n: number) {
   return String(n).padStart(2, "0");
 }
@@ -64,13 +124,16 @@ function* iterarDias(desde: string, hasta: string) {
 export function generarSlots(
   fechaInicioStr: string,
   fechaFinStr: string,
-  numCanchas: number
+  numCanchas: number,
+  horariosPorDia?: Partial<Record<DiaSemana, HorarioDia>>
 ): Slot[] {
   const slots: Slot[] = [];
 
   for (const ymd of iterarDias(fechaInicioStr, fechaFinStr)) {
     const offset = chileOffset(ymd);
-    for (let min = START_MINUTES; min <= LAST_START; min += DURATION) {
+    const { startMin, lastStartMin } = horarioParaDia(ymd, horariosPorDia);
+
+    for (let min = startMin; min <= lastStartMin; min += DURATION) {
       const hh = pad2(Math.floor(min / 60));
       const mm = pad2(min % 60);
       const fechaISO = `${ymd}T${hh}:${mm}:00${offset}`;
@@ -305,6 +368,8 @@ export function asignarHorarios(input: {
   return { ok: true, assignments };
 }
 
-export function slotsPorDia(numCanchas: number): number {
-  return (Math.floor((LAST_START - START_MINUTES) / DURATION) + 1) * numCanchas;
+export function slotsPorDia(numCanchas: number, horario: HorarioDia = HORARIO_DIA_DEFAULT): number {
+  const start = parseHoraMinutos(horario.inicio);
+  const last = parseHoraMinutos(horario.fin ?? HORARIO_DIA_DEFAULT.fin!);
+  return (Math.floor((last - start) / DURATION) + 1) * numCanchas;
 }

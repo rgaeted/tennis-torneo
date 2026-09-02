@@ -5,7 +5,9 @@ import { createClient } from "@/lib/supabase/client";
 import { BracketView, type Partido } from "@/components/bracket/BracketView";
 import { ResultForm } from "@/components/admin/ResultForm";
 import { ProgramarModal } from "@/components/admin/ProgramarModal";
+import { ProgramarAutomaticoModal } from "@/components/admin/ProgramarAutomaticoModal";
 import { AgregarJugadorModal } from "@/components/admin/AgregarJugadorModal";
+import { contarAsignables, type PartidoScheduleInput } from "@/lib/scheduling/autoSchedule";
 
 type JugadorDisponible = { id: string; nombre: string; apellido: string };
 type AddPlayerTarget = { partido: Partido; slot: "jugador1_id" | "jugador2_id" } | null;
@@ -31,16 +33,39 @@ export default function CuadrosPage() {
   const [addPlayerTarget, setAddPlayerTarget] = useState<AddPlayerTarget>(null);
   const [moverMode, setMoverMode] = useState(false);
   const [selectedSwap, setSelectedSwap] = useState<SwapTarget>(null);
+  const [fechaInicio, setFechaInicio] = useState("");
+  const [fechaFin, setFechaFin] = useState("");
+  const [totalCuadros, setTotalCuadros] = useState(0);
+  const [asignablesCount, setAsignablesCount] = useState(0);
+  const [autoModal, setAutoModal] = useState(false);
 
   const iniciado = partidos.some((p) => p.ganador_id !== null);
 
   useEffect(() => {
-    createClient().from("torneo").select("categorias, club:club_id(num_canchas)").eq("id", torneoId).single()
+    const supabase = createClient();
+    supabase.from("torneo").select("categorias, fecha_inicio, fecha_fin, club:club_id(num_canchas)").eq("id", torneoId).single()
       .then(({ data }) => {
         const cats = (data as any)?.categorias ?? [];
         setCategorias(cats);
         setCategoria(cats[0] ?? "");
         setNumCanchas((data as any)?.club?.num_canchas ?? 0);
+        setFechaInicio((data as any)?.fecha_inicio ?? "");
+        setFechaFin((data as any)?.fecha_fin ?? "");
+      });
+
+    supabase.from("cuadro").select("id").eq("torneo_id", torneoId)
+      .then(async ({ data: cuadros }) => {
+        const ids = (cuadros ?? []).map((c) => c.id);
+        setTotalCuadros(ids.length);
+        if (!ids.length) {
+          setAsignablesCount(0);
+          return;
+        }
+        const { data: partidosTorneo } = await supabase
+          .from("partido")
+          .select("id, cuadro_id, ronda, posicion, jugador1_id, jugador2_id, ganador_id, started_at, ended_at, hora_inicio, cancha")
+          .in("cuadro_id", ids);
+        setAsignablesCount(contarAsignables((partidosTorneo ?? []) as PartidoScheduleInput[]));
       });
   }, [torneoId]);
 
@@ -281,6 +306,15 @@ export default function CuadrosPage() {
           </span>
         )}
 
+        {totalCuadros > 0 && asignablesCount > 0 && (
+          <button
+            onClick={() => setAutoModal(true)}
+            className="px-4 py-2 border border-navy-600 text-slate-300 hover:border-navy-500 hover:text-white font-bold rounded-lg transition-colors text-sm"
+          >
+            📅 Programar torneo ({asignablesCount})
+          </button>
+        )}
+
         {msg && (
           <p className={`text-sm ${msg.startsWith("Error") ? "text-red-400" : "text-court"}`}>{msg}</p>
         )}
@@ -409,6 +443,20 @@ export default function CuadrosPage() {
             </button>
           </div>
         </div>
+      )}
+
+      {autoModal && (
+        <ProgramarAutomaticoModal
+          torneoId={torneoId}
+          fechaInicioDefault={fechaInicio}
+          fechaFinDefault={fechaFin}
+          numCanchas={numCanchas}
+          onClose={() => setAutoModal(false)}
+          onSuccess={async () => {
+            setAutoModal(false);
+            await cargarCuadro();
+          }}
+        />
       )}
     </div>
   );

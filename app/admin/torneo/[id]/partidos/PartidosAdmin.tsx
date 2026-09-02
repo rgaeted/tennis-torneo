@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ProgramarModal } from "@/components/admin/ProgramarModal";
+import { ProgramarAutomaticoModal } from "@/components/admin/ProgramarAutomaticoModal";
 import { ResultForm } from "@/components/admin/ResultForm";
 
 type Jugador = { id: string; nombre: string; apellido: string };
@@ -41,36 +42,26 @@ function formatFechaHora(iso: string | null) {
   };
 }
 
-export default function PartidosAdmin({ partidos, numCanchas, torneoId }: { partidos: Partido[]; numCanchas?: number; torneoId?: string }) {
+export default function PartidosAdmin({
+  partidos,
+  numCanchas,
+  torneoId,
+  fechaInicioDefault,
+  fechaFinDefault,
+  asignablesCount = 0,
+}: {
+  partidos: Partido[];
+  numCanchas?: number;
+  torneoId?: string;
+  fechaInicioDefault?: string;
+  fechaFinDefault?: string;
+  asignablesCount?: number;
+}) {
   const router = useRouter();
   const [scheduleModal, setScheduleModal] = useState<Partido | null>(null);
   const [resultModal, setResultModal] = useState<Partido | null>(null);
   const [loading, setLoading] = useState<string | null>(null);
-
-  // Modal programación automática
   const [autoModal, setAutoModal] = useState(false);
-  const [autoFechaInicio, setAutoFechaInicio] = useState("");
-  const [autoFechaFin, setAutoFechaFin] = useState("");
-  const [autoLoading, setAutoLoading] = useState(false);
-  const [autoError, setAutoError] = useState<string | null>(null);
-  const [autoOk, setAutoOk] = useState<string | null>(null);
-
-  async function programarAuto() {
-    if (!torneoId || !autoFechaInicio || !autoFechaFin) return;
-    setAutoLoading(true);
-    setAutoError(null);
-    setAutoOk(null);
-    const res = await fetch("/api/admin/partidos/programar-automatico", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ torneoId, fechaInicio: autoFechaInicio, fechaFin: autoFechaFin }),
-    });
-    const json = await res.json();
-    setAutoLoading(false);
-    if (!res.ok) { setAutoError(json.error); return; }
-    setAutoOk(`${json.programados} partido${json.programados !== 1 ? "s" : ""} programado${json.programados !== 1 ? "s" : ""} correctamente.`);
-    router.refresh();
-  }
 
   async function patchPartido(id: string, body: Record<string, unknown>) {
     setLoading(id);
@@ -95,18 +86,15 @@ export default function PartidosAdmin({ partidos, numCanchas, torneoId }: { part
     return <p className="text-slate-500">No hay partidos aún.</p>;
   }
 
-  const slotsXDia = Math.floor((22 * 60 - 9 * 60) / 90) + 1; // 9 slots (9:00 … 21:00)
-  const conJugadores = partidos.filter(p => p.jugador1 && p.jugador2).length;
-
   return (
     <>
-      {torneoId && conJugadores > 0 && (
+      {torneoId && asignablesCount > 0 && (
         <div className="flex justify-end mb-4">
           <button
-            onClick={() => { setAutoModal(true); setAutoError(null); setAutoOk(null); }}
+            onClick={() => setAutoModal(true)}
             className="text-sm px-4 py-2 border border-navy-600 text-slate-300 hover:border-navy-500 hover:text-white rounded-lg transition-colors"
           >
-            🎲 Programar automáticamente ({conJugadores} partidos)
+            📅 Programar automáticamente ({asignablesCount} partidos)
           </button>
         </div>
       )}
@@ -134,14 +122,12 @@ export default function PartidosAdmin({ partidos, numCanchas, torneoId }: { part
               return (
                 <tr key={p.id} className="hover:bg-navy-800/30 transition-colors">
 
-                  {/* Categoría · Ronda */}
                   <td className="px-4 py-3 text-slate-400 whitespace-nowrap">
                     <span className="capitalize">{p.cuadro?.categoria}</span>
                     <span className="text-slate-600 mx-1">·</span>
                     {RONDA_LABELS[p.ronda] ?? p.ronda}
                   </td>
 
-                  {/* Jugadores */}
                   <td className="px-4 py-3">
                     {p.ganador_id ? (
                       <div className="flex flex-col gap-0.5">
@@ -159,14 +145,13 @@ export default function PartidosAdmin({ partidos, numCanchas, torneoId }: { part
                       </div>
                     ) : (
                       <span className="text-slate-300">
-                        {p.jugador1 ? `${p.jugador1.nombre} ${p.jugador1.apellido}` : "BYE"}
+                        {p.jugador1 ? `${p.jugador1.nombre} ${p.jugador1.apellido}` : p.jugador2 ? "TBD" : "BYE"}
                         <span className="text-slate-600 mx-1.5">vs</span>
-                        {p.jugador2 ? `${p.jugador2.nombre} ${p.jugador2.apellido}` : "BYE"}
+                        {p.jugador2 ? `${p.jugador2.nombre} ${p.jugador2.apellido}` : p.jugador1 ? "TBD" : "BYE"}
                       </span>
                     )}
                   </td>
 
-                  {/* Hora · Cancha */}
                   <td className="px-4 py-3 whitespace-nowrap">
                     {fh ? (
                       <span>
@@ -179,7 +164,6 @@ export default function PartidosAdmin({ partidos, numCanchas, torneoId }: { part
                     )}
                   </td>
 
-                  {/* Duración */}
                   <td className="px-4 py-3 whitespace-nowrap">
                     {duracion ? (
                       <span className="text-court font-medium text-xs">{duracion}</span>
@@ -190,7 +174,6 @@ export default function PartidosAdmin({ partidos, numCanchas, torneoId }: { part
                     )}
                   </td>
 
-                  {/* Acciones */}
                   <td className="px-4 py-3">
                     <div className="flex gap-2 justify-end flex-wrap">
                       <button
@@ -200,7 +183,6 @@ export default function PartidosAdmin({ partidos, numCanchas, torneoId }: { part
                         📅
                       </button>
 
-                      {/* Iniciar partido */}
                       {tieneJugadores && !p.started_at && !p.ganador_id && (
                         <button
                           onClick={() => iniciar(p)}
@@ -211,7 +193,6 @@ export default function PartidosAdmin({ partidos, numCanchas, torneoId }: { part
                         </button>
                       )}
 
-                      {/* Terminar partido */}
                       {p.started_at && !p.ended_at && (
                         <button
                           onClick={() => terminar(p)}
@@ -222,7 +203,6 @@ export default function PartidosAdmin({ partidos, numCanchas, torneoId }: { part
                         </button>
                       )}
 
-                      {/* Registrar resultado */}
                       {!p.ganador_id && tieneJugadores && (
                         <button
                           onClick={() => setResultModal(p)}
@@ -232,7 +212,6 @@ export default function PartidosAdmin({ partidos, numCanchas, torneoId }: { part
                         </button>
                       )}
 
-                      {/* Modificar resultado existente */}
                       {p.ganador_id && tieneJugadores && (
                         <button
                           onClick={() => setResultModal(p)}
@@ -263,63 +242,15 @@ export default function PartidosAdmin({ partidos, numCanchas, torneoId }: { part
         />
       )}
 
-      {/* Modal programación automática */}
-      {autoModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4" onClick={() => setAutoModal(false)}>
-          <div className="bg-navy-900 border border-navy-700 rounded-2xl w-full max-w-sm p-6" onClick={e => e.stopPropagation()}>
-            <div className="flex justify-between items-center mb-5">
-              <h2 className="text-lg font-bold">Programar automáticamente</h2>
-              <button onClick={() => setAutoModal(false)} className="text-slate-500 hover:text-white text-xl leading-none">×</button>
-            </div>
-
-            <div className="space-y-4">
-              <p className="text-xs text-slate-500 leading-relaxed">
-                Asigna cancha y horario de forma aleatoria a todos los partidos con jugadores, reemplazando cualquier horario existente. Los partidos duran 90 min, desde las 09:00 hasta las 21:00.
-                {numCanchas ? ` El club tiene ${numCanchas} cancha${numCanchas !== 1 ? "s" : ""} (${slotsXDia * numCanchas} partidos por día).` : ""}
-              </p>
-
-              <div>
-                <label className="text-xs text-slate-400 mb-1.5 block">Fecha inicio</label>
-                <input
-                  type="date"
-                  value={autoFechaInicio}
-                  onChange={e => setAutoFechaInicio(e.target.value)}
-                  className="w-full px-3 py-2 bg-navy-950 border border-navy-700 rounded-lg text-sm text-white focus:outline-none focus:border-court"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs text-slate-400 mb-1.5 block">Fecha fin</label>
-                <input
-                  type="date"
-                  value={autoFechaFin}
-                  onChange={e => setAutoFechaFin(e.target.value)}
-                  min={autoFechaInicio}
-                  className="w-full px-3 py-2 bg-navy-950 border border-navy-700 rounded-lg text-sm text-white focus:outline-none focus:border-court"
-                />
-              </div>
-
-              {autoError && <p className="text-red-400 text-xs">{autoError}</p>}
-              {autoOk && <p className="text-court text-xs font-medium">{autoOk}</p>}
-
-              <div className="flex gap-3 pt-1">
-                <button
-                  onClick={() => setAutoModal(false)}
-                  className="flex-1 py-2 border border-navy-700 rounded-lg text-sm text-slate-400 hover:border-navy-600 transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={programarAuto}
-                  disabled={autoLoading || !autoFechaInicio || !autoFechaFin}
-                  className="flex-1 py-2 bg-court text-black font-bold rounded-lg text-sm hover:opacity-90 disabled:opacity-40 transition-colors"
-                >
-                  {autoLoading ? "Programando..." : "Programar"}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+      {autoModal && torneoId && (
+        <ProgramarAutomaticoModal
+          torneoId={torneoId}
+          fechaInicioDefault={fechaInicioDefault}
+          fechaFinDefault={fechaFinDefault}
+          numCanchas={numCanchas}
+          onClose={() => setAutoModal(false)}
+          onSuccess={() => router.refresh()}
+        />
       )}
 
       {resultModal && resultModal.jugador1 && resultModal.jugador2 && (

@@ -63,6 +63,66 @@ function StoryBody({ payload, plantilla }: { payload: StoryPayload; plantilla: P
           </p>
         </div>
       );
+    case "foto_partido":
+      if (plantilla === "bold") {
+        return (
+          <div className="flex-1 relative flex flex-col justify-end min-h-0">
+            <img
+              src={payload.fotoUrl}
+              alt=""
+              crossOrigin="anonymous"
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+            <div className="relative z-10 px-12 pb-16 pt-40 bg-gradient-to-t from-black via-black/70 to-transparent text-center">
+              <p className="text-[26px] uppercase tracking-widest opacity-80 mb-4">
+                {labelCategoria(payload.categoria as Categoria)} · {RONDA_LABELS[payload.ronda] ?? payload.ronda}
+              </p>
+              <p className="text-[44px] font-bold leading-tight">
+                {payload.j1.nombre} {payload.j1.apellido}
+              </p>
+              <p className="text-[32px] opacity-70 my-2">vs</p>
+              <p className="text-[44px] font-bold leading-tight">
+                {payload.j2.nombre} {payload.j2.apellido}
+              </p>
+              {payload.score ? (
+                <p className="text-[56px] font-black tabular-nums mt-4">{payload.score}</p>
+              ) : null}
+            </div>
+          </div>
+        );
+      }
+      return (
+        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+          <div
+            className={`mx-8 mt-2 overflow-hidden ${plantilla === "neon" ? "border-2 rounded-lg" : plantilla === "clasico" ? "rounded-lg shadow-lg" : ""}`}
+            style={plantilla === "neon" ? { borderColor: accent } : undefined}
+          >
+            <img
+              src={payload.fotoUrl}
+              alt=""
+              crossOrigin="anonymous"
+              className="w-full h-[720px] object-cover"
+            />
+          </div>
+          <div className="flex-1 flex flex-col items-center justify-center px-12 text-center gap-3">
+            <p className="text-[26px] uppercase tracking-widest opacity-70">
+              {labelCategoria(payload.categoria as Categoria)} · {RONDA_LABELS[payload.ronda] ?? payload.ronda}
+            </p>
+            <p className="text-[38px] font-bold leading-tight">
+              {payload.j1.nombre} {payload.j1.apellido}
+            </p>
+            <p className="text-[24px] opacity-60">vs</p>
+            <p className="text-[38px] font-bold leading-tight">
+              {payload.j2.nombre} {payload.j2.apellido}
+            </p>
+            {payload.score ? (
+              <p className="text-[52px] font-black tabular-nums mt-2" style={{ color: accent }}>
+                {payload.score}
+              </p>
+            ) : null}
+          </div>
+        </div>
+      );
     case "campeon":
       return (
         <div className="flex-1 flex flex-col items-center justify-center px-12 text-center gap-6">

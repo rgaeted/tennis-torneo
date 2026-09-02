@@ -229,6 +229,7 @@ export type Database = {
           hora_inicio: string | null
           started_at: string | null
           ended_at: string | null
+          foto_url: string | null
           created_at: string
         }
         Insert: {
@@ -245,6 +246,7 @@ export type Database = {
           hora_inicio?: string | null
           started_at?: string | null
           ended_at?: string | null
+          foto_url?: string | null
           created_at?: string
         }
         Update: {
@@ -261,6 +263,7 @@ export type Database = {
           hora_inicio?: string | null
           started_at?: string | null
           ended_at?: string | null
+          foto_url?: string | null
           created_at?: string
         }
         Relationships: []

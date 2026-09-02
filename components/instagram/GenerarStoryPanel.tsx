@@ -11,6 +11,7 @@ import {
   lineaPrincipalDePayload,
   logroJugador,
 } from "@/lib/instagram/payload";
+import { PartidoFotoUpload } from "@/components/partidos/PartidoFotoUpload";
 import type {
   JugadorStory,
   PartidoStoryRow,
@@ -52,6 +53,9 @@ export function GenerarStoryPanel({
   const [jugadorKey, setJugadorKey] = useState("");
   const [errorExport, setErrorExport] = useState<string | null>(null);
   const [copiado, setCopiado] = useState(false);
+  const [fotoUrls, setFotoUrls] = useState<Record<string, string | null>>(() =>
+    Object.fromEntries(partidos.map((p) => [p.id, p.foto_url ?? null]))
+  );
 
   const partidosPorCategoria = useMemo(() => {
     const map = new Map<string, PartidoConCat[]>();
@@ -62,6 +66,14 @@ export function GenerarStoryPanel({
     }
     return map;
   }, [partidos]);
+
+  const partidosConJugadores = useMemo(
+    () => partidos.filter((p) => p.jugador1 && p.jugador2),
+    [partidos]
+  );
+
+  const partidoFotoSeleccionado = partidosConJugadores.find((p) => p.id === partidoId) ?? null;
+  const fotoUrlSeleccionada = partidoId ? (fotoUrls[partidoId] ?? null) : null;
 
   const partidosConResultado = useMemo(
     () =>
@@ -147,6 +159,22 @@ export function GenerarStoryPanel({
           logro: logroJugador(ins.jugador.id, ps),
         };
       }
+      case "foto_partido": {
+        const p = partidosConJugadores.find((x) => x.id === partidoId);
+        const fotoUrl = p ? fotoUrls[p.id] : null;
+        if (!p || !p.jugador1 || !p.jugador2 || !fotoUrl) return null;
+        const score = formatScore(p.resultado as { j1: number; j2: number }[] | null);
+        return {
+          ...ctx,
+          tipo: "foto_partido",
+          categoria: p.categoria,
+          ronda: p.ronda,
+          j1: p.jugador1,
+          j2: p.jugador2,
+          fotoUrl,
+          score: score || null,
+        };
+      }
     }
   }, [
     tipo,
@@ -157,6 +185,7 @@ export function GenerarStoryPanel({
     patrocinadorId,
     jugadorKey,
     partidosConResultado,
+    partidosConJugadores,
     partidosPorCategoria,
     patrocinadoresActivos,
     inscritos,
@@ -165,6 +194,7 @@ export function GenerarStoryPanel({
     clubNombre,
     clubImagenUrl,
     patrocinadores,
+    fotoUrls,
   ]);
 
   const caption = useMemo(() => {
@@ -181,6 +211,23 @@ export function GenerarStoryPanel({
 
   const [captionEdit, setCaptionEdit] = useState("");
   const captionValue = captionEdit || caption;
+
+  async function descargarFoto() {
+    if (!fotoUrlSeleccionada || !partidoFotoSeleccionado) return;
+    try {
+      const res = await fetch(fotoUrlSeleccionada);
+      const blob = await res.blob();
+      const ext = blob.type.includes("png") ? "png" : "jpg";
+      const slug = partidoFotoSeleccionado.categoria;
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `foto-partido-${slug}-${new Date().toISOString().slice(0, 10)}.${ext}`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    } catch {
+      setErrorExport("No se pudo descargar la foto.");
+    }
+  }
 
   async function descargar() {
     setErrorExport(null);
@@ -217,7 +264,11 @@ export function GenerarStoryPanel({
   const emptyMsg =
     tipo === "resultado"
       ? "No hay partidos con resultado todavía."
-      : tipo === "campeon"
+      : tipo === "foto_partido"
+        ? partidoId && !fotoUrlSeleccionada
+          ? "Sube una foto del partido para generar la story."
+          : "Selecciona un partido con ambos jugadores."
+        : tipo === "campeon"
         ? "Ninguna categoría tiene campeón (falta ganador de la final)."
         : tipo === "cuadro"
           ? "No hay partidos en esa ronda."
@@ -240,12 +291,45 @@ export function GenerarStoryPanel({
               className="mt-1 w-full px-3 py-2 bg-navy-950 border border-navy-600 rounded-lg text-sm"
             >
               <option value="resultado">Resultado</option>
+              <option value="foto_partido">Foto de partido</option>
               <option value="campeon">Campeón</option>
               <option value="cuadro">Cuadro</option>
               <option value="patrocinador">Patrocinador</option>
               <option value="jugador">Jugador</option>
             </select>
           </label>
+
+          {tipo === "foto_partido" && (
+            <>
+              <label className="block text-xs text-slate-500">
+                Partido
+                <select
+                  value={partidoId}
+                  onChange={(e) => setPartidoId(e.target.value)}
+                  className="mt-1 w-full px-3 py-2 bg-navy-950 border border-navy-600 rounded-lg text-sm"
+                >
+                  <option value="">Seleccionar…</option>
+                  {partidosConJugadores.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.categoria} · {p.jugador1?.apellido} vs {p.jugador2?.apellido}
+                      {fotoUrls[p.id] ? " 📷" : ""}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {partidoId && (
+                <PartidoFotoUpload
+                  partidoId={partidoId}
+                  fotoUrl={fotoUrlSeleccionada}
+                  canUpload={!!partidoFotoSeleccionado}
+                  compact
+                  onChange={(url) =>
+                    setFotoUrls((prev) => ({ ...prev, [partidoId]: url }))
+                  }
+                />
+              )}
+            </>
+          )}
 
           {tipo === "resultado" && (
             <label className="block text-xs text-slate-500">
@@ -377,14 +461,24 @@ export function GenerarStoryPanel({
             <p className="text-sm text-red-400">{errorExport}</p>
           )}
 
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            {tipo === "foto_partido" && (
+              <button
+                type="button"
+                disabled={!fotoUrlSeleccionada}
+                onClick={descargarFoto}
+                className="px-4 py-2 text-sm border border-navy-600 text-slate-300 rounded-lg disabled:opacity-40"
+              >
+                Descargar foto
+              </button>
+            )}
             <button
               type="button"
               disabled={!payload}
               onClick={descargar}
               className="px-4 py-2 text-sm border border-court/40 text-court rounded-lg disabled:opacity-40"
             >
-              Descargar PNG
+              {tipo === "foto_partido" ? "Descargar story" : "Descargar PNG"}
             </button>
             <button
               type="button"

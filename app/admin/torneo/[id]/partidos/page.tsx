@@ -25,7 +25,7 @@ export default async function PartidosPage({ params }: { params: Promise<{ id: s
   const { data: partidos } = await supabase
     .from("partido")
     .select(`
-      id, cuadro_id, ronda, posicion, cancha, hora_inicio, ganador_id, resultado, started_at, ended_at,
+      id, cuadro_id, ronda, posicion, cancha, hora_inicio, ganador_id, resultado, started_at, ended_at, foto_url,
       jugador1_id, jugador2_id,
       jugador1:jugador!jugador1_id(id, nombre, apellido),
       jugador2:jugador!jugador2_id(id, nombre, apellido),

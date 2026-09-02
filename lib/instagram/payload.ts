@@ -73,10 +73,22 @@ export function lineasCuadro(partidos: PartidoStoryRow[], ronda: string): string
     });
 }
 
+export function lineaPrincipalFotoPartido(
+  j1: JugadorStory,
+  j2: JugadorStory,
+  score?: string | null
+): string {
+  const vs = `${j1.nombre} ${j1.apellido} vs ${j2.nombre} ${j2.apellido}`;
+  if (score) return `${vs} — ${score}`;
+  return vs;
+}
+
 export function lineaPrincipalDePayload(payload: StoryPayload): string {
   switch (payload.tipo) {
     case "resultado":
       return `${payload.j1.nombre} ${payload.j1.apellido} ${payload.score} ${payload.j2.nombre} ${payload.j2.apellido}`.trim();
+    case "foto_partido":
+      return lineaPrincipalFotoPartido(payload.j1, payload.j2, payload.score);
     case "campeon":
       return `${payload.campeon.nombre} ${payload.campeon.apellido} — Campeón`;
     case "cuadro":

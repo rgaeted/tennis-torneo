@@ -4,6 +4,7 @@ import {
   campeonDeFinal,
   logroJugador,
   lineaPrincipalDePayload,
+  lineaPrincipalFotoPartido,
 } from "./payload";
 import type { PartidoStoryRow, StoryPayload } from "./types";
 
@@ -85,7 +86,35 @@ describe("logroJugador", () => {
   });
 });
 
+describe("lineaPrincipalFotoPartido", () => {
+  it("usa vs sin score", () => {
+    expect(lineaPrincipalFotoPartido(ana, luis)).toBe("Ana Pérez vs Luis Soto");
+  });
+  it("incluye score si existe", () => {
+    expect(lineaPrincipalFotoPartido(ana, luis, "6-4 6-2")).toBe("Ana Pérez vs Luis Soto — 6-4 6-2");
+  });
+});
+
 describe("lineaPrincipalDePayload", () => {
+  it("foto_partido usa vs y score opcional", () => {
+    const payload: StoryPayload = {
+      tipo: "foto_partido",
+      torneoNombre: "X",
+      clubNombre: null,
+      clubImagenUrl: null,
+      patrocinadores: [],
+      categoria: "cuarta",
+      ronda: "semis",
+      j1: ana,
+      j2: luis,
+      fotoUrl: "https://example.com/f.jpg",
+      score: "6-3 6-4",
+    };
+    expect(lineaPrincipalDePayload(payload)).toBe("Ana Pérez vs Luis Soto — 6-3 6-4");
+  });
+});
+
+describe("lineaPrincipalDePayload resultado", () => {
   it("resultado usa nombres y score", () => {
     const payload: StoryPayload = {
       tipo: "resultado",

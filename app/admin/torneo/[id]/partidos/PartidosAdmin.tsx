@@ -6,6 +6,7 @@ import { ProgramarModal } from "@/components/admin/ProgramarModal";
 import { ProgramarAutomaticoModal } from "@/components/admin/ProgramarAutomaticoModal";
 import { ResultForm } from "@/components/admin/ResultForm";
 import { PartidosCalendario, type PartidoCalendario } from "@/components/admin/PartidosCalendario";
+import { PartidoFotoUpload } from "@/components/partidos/PartidoFotoUpload";
 import { colorCategoria, labelCategoria, type Categoria } from "@/lib/categorias";
 import { labelsPartido, primeraRondaDelCuadro, type Ronda } from "@/lib/bracket/matchLabels";
 
@@ -59,20 +60,24 @@ function labelJugadores(p: Partido): string {
 
 function PartidoDetallePanel({
   partido,
+  fotoUrl,
   loading,
   onClose,
   onSchedule,
   onIniciar,
   onTerminar,
   onResultado,
+  onFotoChange,
 }: {
   partido: Partido;
+  fotoUrl: string | null;
   loading: boolean;
   onClose: () => void;
   onSchedule: () => void;
   onIniciar: () => void;
   onTerminar: () => void;
   onResultado: () => void;
+  onFotoChange: (url: string | null) => void;
 }) {
   const cat = partido.cuadro?.categoria ?? "cuarta";
   const colors = colorCategoria(cat);
@@ -143,6 +148,15 @@ function PartidoDetallePanel({
           </div>
         </dl>
 
+        <div className="mb-5 pb-5 border-b border-navy-800">
+          <PartidoFotoUpload
+            partidoId={partido.id}
+            fotoUrl={fotoUrl}
+            canUpload={!!tieneJugadores}
+            onChange={onFotoChange}
+          />
+        </div>
+
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
@@ -208,6 +222,18 @@ export default function PartidosAdmin({
   const [detallePartido, setDetallePartido] = useState<Partido | null>(null);
   const [loading, setLoading] = useState<string | null>(null);
   const [autoModal, setAutoModal] = useState(false);
+  const [fotoUrls, setFotoUrls] = useState<Record<string, string | null>>(() =>
+    Object.fromEntries(partidos.map((p) => [p.id, p.foto_url ?? null]))
+  );
+
+  function fotoUrlDe(p: Partido) {
+    return fotoUrls[p.id] ?? p.foto_url ?? null;
+  }
+
+  function actualizarFoto(partidoId: string, url: string | null) {
+    setFotoUrls((prev) => ({ ...prev, [partidoId]: url }));
+    setDetallePartido((prev) => (prev?.id === partidoId ? { ...prev, foto_url: url } : prev));
+  }
 
   async function patchPartido(id: string, body: Record<string, unknown>) {
     setLoading(id);
@@ -321,6 +347,9 @@ export default function PartidosAdmin({
                     </td>
 
                     <td className="px-4 py-3">
+                      {fotoUrlDe(p) && (
+                        <span className="text-xs mr-1.5" title="Tiene foto">📷</span>
+                      )}
                       {p.ganador_id ? (
                         <div className="flex flex-col gap-0.5">
                           <span>
@@ -436,6 +465,7 @@ export default function PartidosAdmin({
       {detallePartido && (
         <PartidoDetallePanel
           partido={detallePartido}
+          fotoUrl={fotoUrlDe(detallePartido)}
           loading={loading === detallePartido.id}
           onClose={() => setDetallePartido(null)}
           onSchedule={() => {
@@ -454,6 +484,7 @@ export default function PartidosAdmin({
             setResultModal(detallePartido);
             setDetallePartido(null);
           }}
+          onFotoChange={(url) => actualizarFoto(detallePartido.id, url)}
         />
       )}
 

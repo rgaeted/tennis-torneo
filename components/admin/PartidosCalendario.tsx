@@ -22,6 +22,7 @@ export type PartidoCalendario = {
   resultado: unknown;
   started_at: string | null;
   ended_at: string | null;
+  foto_url?: string | null;
   jugador1: Jugador | null;
   jugador2: Jugador | null;
   ganador: { nombre: string; apellido: string } | null;

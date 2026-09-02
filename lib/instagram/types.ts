@@ -1,6 +1,6 @@
 export type NivelPatrocinador = "oro" | "plata";
 export type PlantillaStory = "neon" | "clasico" | "bold";
-export type TipoStory = "resultado" | "campeon" | "cuadro" | "patrocinador" | "jugador";
+export type TipoStory = "resultado" | "campeon" | "cuadro" | "patrocinador" | "jugador" | "foto_partido";
 
 export type PatrocinadorInput = {
   id?: string;
@@ -45,6 +45,7 @@ export type PartidoStoryRow = {
   jugador2_id: string | null;
   jugador1: JugadorStory | null;
   jugador2: JugadorStory | null;
+  foto_url?: string | null;
 };
 
 export type StoryPayload =
@@ -76,4 +77,13 @@ export type StoryPayload =
       categoria: string;
       jugador: JugadorStory;
       logro: string;
+    })
+  | (StoryContext & {
+      tipo: "foto_partido";
+      categoria: string;
+      ronda: string;
+      j1: JugadorStory;
+      j2: JugadorStory;
+      fotoUrl: string;
+      score: string | null;
     });

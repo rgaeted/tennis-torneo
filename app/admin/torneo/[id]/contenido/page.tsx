@@ -33,7 +33,7 @@ export default async function ContenidoPage({ params }: { params: Promise<{ id: 
     ? await supabase
         .from("partido")
         .select(`
-          id, ronda, posicion, ganador_id, resultado, jugador1_id, jugador2_id,
+          id, ronda, posicion, ganador_id, resultado, jugador1_id, jugador2_id, foto_url,
           jugador1:jugador!jugador1_id(id, nombre, apellido, foto_url),
           jugador2:jugador!jugador2_id(id, nombre, apellido, foto_url),
           cuadro:cuadro_id(categoria)
@@ -51,6 +51,7 @@ export default async function ContenidoPage({ params }: { params: Promise<{ id: 
     jugador2_id: p.jugador2_id,
     jugador1: p.jugador1 as JugadorStory | null,
     jugador2: p.jugador2 as JugadorStory | null,
+    foto_url: p.foto_url as string | null | undefined,
     categoria: p.cuadro?.categoria ?? "",
   })) as Array<PartidoStoryRow & { categoria: string }>;
 

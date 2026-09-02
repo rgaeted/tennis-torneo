@@ -34,8 +34,18 @@ export function BracketMatch({
   const puedeCargar = onResult && jugador1Id && jugador2Id && !ganadorId;
   const esFinal = ronda === "final";
 
-  const hora = horaInicio
-    ? new Date(horaInicio).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })
+  const schedule = horaInicio
+    ? (() => {
+        const d = new Date(horaInicio);
+        return {
+          fecha: d.toLocaleDateString("es-CL", { day: "2-digit", month: "2-digit" }),
+          hora: d.toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" }),
+        };
+      })()
+    : null;
+
+  const scheduleLabel = schedule
+    ? `${schedule.fecha} · ${schedule.hora}${cancha ? ` · C${cancha}` : ""}`
     : null;
 
   const slots = [
@@ -57,7 +67,7 @@ export function BracketMatch({
           className="px-3 py-1.5 flex items-center justify-between text-[10px] font-bold uppercase tracking-widest"
         >
           <span>Final</span>
-          {hora && <span>{hora}</span>}
+          {scheduleLabel && <span>{scheduleLabel}</span>}
         </div>
       )}
 
@@ -134,9 +144,9 @@ export function BracketMatch({
         </div>
       )}
 
-      {hora && !esFinal && !ganadorId && (
+      {scheduleLabel && !esFinal && !ganadorId && (
         <div style={{ borderBottom: `1px solid ${BORDER}`, color: "#555" }} className="px-3 py-1 text-[11px]">
-          {hora}{cancha && ` · Cancha ${cancha}`}
+          {scheduleLabel}
         </div>
       )}
 

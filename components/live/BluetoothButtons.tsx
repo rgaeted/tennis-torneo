@@ -1,5 +1,7 @@
 "use client";
 import { useScoreButtons } from "@/lib/live/useScoreButtons";
+import { AB_SHUTTER3_IOS_BINDING } from "@/lib/live/buttonBindings";
+import { isIosSafari } from "@/lib/live/platform";
 import type { Player } from "@/lib/live/types";
 
 export default function BluetoothButtons({
@@ -13,10 +15,18 @@ export default function BluetoothButtons({
 }) {
   const {
     bindings, capturing, bleSupported, error,
-    beginHidCapture, cancelCapture, connectBle, disconnect,
+    beginHidCapture, assignAbShutter3, cancelCapture, connectBle, disconnect,
   } = useScoreButtons(partidoId, onPoint);
 
+  const iosSafari = isIosSafari();
   const slots: Player[] = selfPlayer ? [selfPlayer] : ["j1", "j2"];
+
+  function bindingLabel(b: typeof bindings.j1) {
+    if (!b) return "";
+    if (b.kind === "ble") return b.deviceName;
+    if (b.code === AB_SHUTTER3_IOS_BINDING.code) return "AB Shutter3";
+    return `Tecla ${b.code}`;
+  }
 
   return (
     <div className="w-full max-w-sm bg-navy-900 border border-navy-700 rounded-2xl p-5 space-y-4">
@@ -24,7 +34,9 @@ export default function BluetoothButtons({
         Botón Bluetooth
       </p>
       <p className="text-xs text-slate-500 text-center">
-        Empareja un mando selfie o presentador. Primero conéctalo en el Bluetooth del teléfono, luego pulsa Conectar y aprieta el botón.
+        {iosSafari
+          ? "En iPhone: empareja el AB Shutter3 en Ajustes → Bluetooth y usa el botón de abajo. El volumen puede subir al apretar — es normal en Safari; si no suma puntos, usa los + en pantalla."
+          : "Empareja un mando selfie o presentador. Primero conéctalo en el Bluetooth del teléfono, luego pulsa Conectar y aprieta el botón."}
       </p>
       {error && <p className="text-xs text-red-400 text-center">{error}</p>}
       {slots.map((player) => {
@@ -36,7 +48,7 @@ export default function BluetoothButtons({
             {bound ? (
               <div className="flex items-center justify-between gap-2">
                 <span className="text-xs text-ball truncate">
-                  {bound.kind === "hid" ? `Tecla ${bound.code}` : bound.deviceName}
+                  {bindingLabel(bound)}
                 </span>
                 <button
                   type="button"
@@ -53,6 +65,14 @@ export default function BluetoothButtons({
                   Cancelar
                 </button>
               </div>
+            ) : iosSafari ? (
+              <button
+                type="button"
+                onClick={() => assignAbShutter3(player)}
+                className="w-full py-2 rounded-xl bg-court text-white text-sm font-semibold hover:bg-court-dark"
+              >
+                AB Shutter3 (iPhone)
+              </button>
             ) : (
               <div className="flex gap-2">
                 <button

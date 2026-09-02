@@ -8,6 +8,13 @@ export type ScoreButtonBindings = { j1: ButtonBinding | null; j2: ButtonBinding 
 export const BINDINGS_STORAGE_PREFIX = "score-buttons:";
 export const DEFAULT_DEBOUNCE_MS = 400;
 
+/** AB Shutter3 en modo iPhone envía Volume Up; no hace falta capturar la tecla. */
+export const AB_SHUTTER3_IOS_BINDING: HidBinding = {
+  kind: "hid",
+  code: "AudioVolumeUp",
+  key: "VolumeUp",
+};
+
 export function storageKey(partidoId: string): string {
   return `${BINDINGS_STORAGE_PREFIX}${partidoId}`;
 }

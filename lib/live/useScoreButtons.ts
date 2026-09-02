@@ -8,6 +8,7 @@ import {
   serializeBindings,
   shouldAcceptPress,
   storageKey,
+  AB_SHUTTER3_IOS_BINDING,
   type ScoreButtonBindings,
 } from "./buttonBindings";
 import { connectBleNotifyButton, type BluetoothRequestApi } from "./bleButton";
@@ -65,8 +66,8 @@ export function useScoreButtons(partidoId: string, onPoint: (player: Player) => 
       e.stopPropagation();
       tryPoint(player);
     }
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => window.removeEventListener("keydown", onKeyDown, true);
   }, [tryPoint]);
 
   useEffect(() => {
@@ -81,6 +82,11 @@ export function useScoreButtons(partidoId: string, onPoint: (player: Player) => 
     bleSupported,
     error,
     beginHidCapture: (player: Player) => { setError(null); setCapturing(player); },
+    assignAbShutter3: (player: Player) => {
+      setError(null);
+      setCapturing(null);
+      setBindings((prev) => ({ ...prev, [player]: AB_SHUTTER3_IOS_BINDING }));
+    },
     cancelCapture: () => setCapturing(null),
     connectBle: async (player: Player) => {
       setError(null);

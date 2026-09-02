@@ -265,6 +265,39 @@ export type Database = {
         }
         Relationships: []
       }
+      patrocinador_torneo: {
+        Row: {
+          id: string
+          torneo_id: string
+          nombre: string
+          logo_url: string | null
+          nivel: Database["public"]["Enums"]["nivel_patrocinador"]
+          orden: number
+          activo: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          torneo_id: string
+          nombre: string
+          logo_url?: string | null
+          nivel?: Database["public"]["Enums"]["nivel_patrocinador"]
+          orden?: number
+          activo?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          torneo_id?: string
+          nombre?: string
+          logo_url?: string | null
+          nivel?: Database["public"]["Enums"]["nivel_patrocinador"]
+          orden?: number
+          activo?: boolean
+          created_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {}
     Functions: {}
@@ -274,6 +307,7 @@ export type Database = {
       estado_pago: "pendiente" | "pagado" | "rechazado"
       ronda_tipo: "primera_ronda" | "segunda_ronda" | "cuartos" | "semis" | "final"
       tamano_bracket: "8" | "16" | "32"
+      nivel_patrocinador: "oro" | "plata"
     }
     CompositeTypes: {}
   }

@@ -53,6 +53,7 @@ export default async function OrganizadorTorneoPage({ params }: { params: Promis
     { href: `/organizador/torneo/${id}/inscripciones`, label: "Inscripciones" },
     { href: `/organizador/torneo/${id}/cuadros`, label: "Cuadros" },
     { href: `/organizador/torneo/${id}/partidos`, label: "Lista de partidos" },
+    { href: `/organizador/torneo/${id}/contenido`, label: "Contenido" },
   ];
 
   return (

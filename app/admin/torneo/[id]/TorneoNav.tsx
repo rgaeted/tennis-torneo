@@ -7,6 +7,7 @@ const TABS = [
   { suffix: "/inscripciones", label: "Inscripciones" },
   { suffix: "/cuadros",       label: "Cuadros" },
   { suffix: "/partidos",      label: "Partidos" },
+  { suffix: "/contenido",      label: "Contenido" },
 ];
 
 export default function TorneoNav({ id }: { id: string }) {

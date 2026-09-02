@@ -1,4 +1,5 @@
 import type { Database } from "@/lib/supabase/types";
+import { calcularRondas } from "../bracket/generator";
 
 export type Ronda = Database["public"]["Enums"]["ronda_tipo"];
 
@@ -12,6 +13,7 @@ export interface PartidoScheduleInput {
   cuadro_id: string;
   ronda: Ronda;
   posicion: number;
+  tamano?: 8 | 16 | 32;
   jugador1_id: string | null;
   jugador2_id: string | null;
   ganador_id: string | null;
@@ -264,6 +266,67 @@ function ordenarAsignables(partidos: PartidoScheduleInput[]): PartidoScheduleInp
   });
 }
 
+/** Jugadores en liza al inicio de la ronda — clave para sincronizar categorías (32, 16, 8…). */
+export function jugadoresAlInicioRonda(tamano: 8 | 16 | 32, ronda: Ronda): number {
+  const rondas = calcularRondas(tamano);
+  const idx = rondas.indexOf(ronda);
+  if (idx < 0) return 0;
+  return tamano / 2 ** idx;
+}
+
+function etapaPartido(p: PartidoScheduleInput): number {
+  const tamano = p.tamano ?? 16;
+  return jugadoresAlInicioRonda(tamano, p.ronda);
+}
+
+function asignarPartidoEnSlot(input: {
+  p: PartidoScheduleInput;
+  slots: Slot[];
+  porCuadro: Map<string, PartidoScheduleInput[]>;
+  assignments: Record<string, ScheduleAssignment>;
+  ocupados: Set<string>;
+  jugadoresPorHora: Map<string, Set<string>>;
+}): boolean {
+  const { p, slots, porCuadro, assignments, ocupados, jugadoresPorHora } = input;
+
+  let minTime: number;
+  try {
+    minTime = minInicioPermitido(p, porCuadro, assignments);
+  } catch {
+    return false;
+  }
+
+  const jugadores = jugadoresEnPartido(p);
+
+  for (const slot of slots) {
+    const key = slotKey(slot.fechaISO, slot.cancha);
+    if (ocupados.has(key)) continue;
+
+    const slotTime = new Date(slot.fechaISO).getTime();
+    if (slotTime < minTime) continue;
+
+    if (jugadores.length) {
+      const busy = jugadoresPorHora.get(slot.fechaISO);
+      if (busy && jugadores.some((j) => busy.has(j))) continue;
+    }
+
+    ocupados.add(key);
+    assignments[p.id] = {
+      hora_inicio: slot.fechaISO,
+      cancha: String(slot.cancha),
+    };
+
+    if (jugadores.length) {
+      const set = jugadoresPorHora.get(slot.fechaISO) ?? new Set<string>();
+      for (const j of jugadores) set.add(j);
+      jugadoresPorHora.set(slot.fechaISO, set);
+    }
+    return true;
+  }
+
+  return false;
+}
+
 export function asignarHorarios(input: {
   slots: Slot[];
   partidos: PartidoScheduleInput[];
@@ -295,64 +358,48 @@ export function asignarHorarios(input: {
     jugadoresPorHora.set(p.hora_inicio, set);
   }
 
-  const asignables = ordenarAsignables(
-    partidos.filter((p) => clasificarPartido(p, porCuadro.get(p.cuadro_id) ?? []) === "asignable")
+  const asignables = partidos.filter(
+    (p) => clasificarPartido(p, porCuadro.get(p.cuadro_id) ?? []) === "asignable"
   );
 
   if (!asignables.length) {
     return { ok: true, assignments: {} };
   }
 
+  const etapas = [...new Set(asignables.map(etapaPartido))].sort((a, b) => b - a);
   let sinSlot = 0;
+  let errorInterno = false;
 
-  for (const p of asignables) {
-    let minTime: number;
-    try {
-      minTime = minInicioPermitido(p, porCuadro, assignments);
-    } catch {
-      return {
-        ok: false,
-        error: "Error interno: dependencia de horario sin resolver.",
-        sinSlot: asignables.length,
-      };
-    }
+  for (const etapa of etapas) {
+    const lote = ordenarAsignables(asignables.filter((p) => etapaPartido(p) === etapa));
 
-    const jugadores = jugadoresEnPartido(p);
-    let found: Slot | null = null;
+    for (const p of lote) {
+      const ok = asignarPartidoEnSlot({
+        p,
+        slots,
+        porCuadro,
+        assignments,
+        ocupados,
+        jugadoresPorHora,
+      });
 
-    for (const slot of slots) {
-      const key = slotKey(slot.fechaISO, slot.cancha);
-      if (ocupados.has(key)) continue;
-
-      const slotTime = new Date(slot.fechaISO).getTime();
-      if (slotTime < minTime) continue;
-
-      if (jugadores.length) {
-        const busy = jugadoresPorHora.get(slot.fechaISO);
-        if (busy && jugadores.some((j) => busy.has(j))) continue;
+      if (!ok) {
+        if (!assignments[p.id]) {
+          const feeders = feedersReales(p, porCuadro);
+          const faltaFeeder = feeders.some((f) => !horaDePartido(f, assignments));
+          if (faltaFeeder) errorInterno = true;
+          else sinSlot++;
+        }
       }
-
-      found = slot;
-      break;
     }
+  }
 
-    if (!found) {
-      sinSlot++;
-      continue;
-    }
-
-    const key = slotKey(found.fechaISO, found.cancha);
-    ocupados.add(key);
-    assignments[p.id] = {
-      hora_inicio: found.fechaISO,
-      cancha: String(found.cancha),
+  if (errorInterno) {
+    return {
+      ok: false,
+      error: "Error interno: dependencia de horario sin resolver.",
+      sinSlot: asignables.length,
     };
-
-    if (jugadores.length) {
-      const set = jugadoresPorHora.get(found.fechaISO) ?? new Set<string>();
-      for (const j of jugadores) set.add(j);
-      jugadoresPorHora.set(found.fechaISO, set);
-    }
   }
 
   const asignados = Object.keys(assignments).length;

@@ -17,6 +17,21 @@ export function labelCategoria(c: Categoria): string {
   return c === "open" ? "Open" : c.charAt(0).toUpperCase() + c.slice(1);
 }
 
+/** Colores distintivos por categoría para calendario y leyendas. */
+export const CATEGORIA_COLORS: Record<Categoria, { bg: string; border: string; text: string }> = {
+  open:    { bg: "rgba(200,255,0,0.18)",  border: "#C8FF00", text: "#C8FF00" },
+  primera: { bg: "rgba(255,107,107,0.18)", border: "#FF6B6B", text: "#FF6B6B" },
+  segunda: { bg: "rgba(78,205,196,0.18)", border: "#4ECDC4", text: "#4ECDC4" },
+  tercera: { bg: "rgba(255,217,61,0.18)", border: "#FFD93D", text: "#FFD93D" },
+  cuarta:  { bg: "rgba(107,203,255,0.18)", border: "#6BCBFF", text: "#6BCBFF" },
+  damas:   { bg: "rgba(199,125,255,0.18)", border: "#C77DFF", text: "#C77DFF" },
+  dobles:  { bg: "rgba(255,146,43,0.18)",  border: "#FF922B", text: "#FF922B" },
+};
+
+export function colorCategoria(categoria: string) {
+  return CATEGORIA_COLORS[categoria as Categoria] ?? CATEGORIA_COLORS.cuarta;
+}
+
 export const PUNTOS_RANKING = {
   open:    { campeon: 700, finalista: 400, semis: 200, cuartos: 100, primera_ronda: 35 },
   primera: { campeon: 500, finalista: 300, semis: 150, cuartos: 75,  primera_ronda: 25 },

@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   asignarHorarios,
   generarSlots,
+  jugadoresAlInicioRonda,
   REST_MINUTES,
   validarHorarioManual,
   validarHorariosPorDia,
@@ -117,38 +118,101 @@ describe("asignarHorarios", () => {
     expect(result.assignments["a1"].hora_inicio).not.toBe(result.assignments["b1"].hora_inicio);
   });
 
-  it("falla si no hay slots suficientes para todo el cuadro", () => {
-    const partidos: PartidoScheduleInput[] = [];
-    for (let i = 0; i < 8; i++) {
-      partidos.push(
-        p({
-          id: `pr${i}`,
-          ronda: "primera_ronda",
-          posicion: i,
-          jugador1_id: `p${i * 2}`,
-          jugador2_id: `p${i * 2 + 1}`,
-        })
-      );
-    }
-    for (let i = 0; i < 4; i++) {
-      partidos.push(p({ id: `sr${i}`, ronda: "segunda_ronda", posicion: i, jugador1_id: null, jugador2_id: null }));
-    }
-    for (let i = 0; i < 2; i++) {
-      partidos.push(p({ id: `cf${i}`, ronda: "cuartos", posicion: i, jugador1_id: null, jugador2_id: null }));
-    }
-    partidos.push(p({ id: "s0", ronda: "semis", posicion: 0, jugador1_id: null, jugador2_id: null }));
-    partidos.push(p({ id: "s1", ronda: "semis", posicion: 1, jugador1_id: null, jugador2_id: null }));
-    partidos.push(p({ id: "f0", ronda: "final", posicion: 0, jugador1_id: null, jugador2_id: null }));
+  it("sincroniza etapas: cuarta (32) primera ronda antes que tercera (16) primera ronda", () => {
+    const cuadro32 = "cuadro-32";
+    const cuadro16 = "cuadro-16";
+
+    const partidos32 = [0, 1, 2, 3].map((i) =>
+      p({
+        id: `32-pr-${i}`,
+        cuadro_id: cuadro32,
+        tamano: 32,
+        ronda: "primera_ronda",
+        posicion: i,
+        jugador1_id: `32a${i}`,
+        jugador2_id: `32b${i}`,
+      })
+    );
+    const partidos16 = [0, 1, 2, 3].map((i) =>
+      p({
+        id: `16-pr-${i}`,
+        cuadro_id: cuadro16,
+        tamano: 16,
+        ronda: "primera_ronda",
+        posicion: i,
+        jugador1_id: `16a${i}`,
+        jugador2_id: `16b${i}`,
+      })
+    );
 
     const slots = generarSlots("2026-06-05", "2026-06-05", 1);
-    const result = asignarHorarios({ slots, partidos });
+    const result = asignarHorarios({ slots, partidos: [...partidos32, ...partidos16] });
 
-    expect(result.ok).toBe(false);
-    if (result.ok) return;
-    expect(result.sinSlot).toBeGreaterThan(0);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    const max32 = Math.max(...partidos32.map((x) => ms(result.assignments[x.id].hora_inicio)));
+    const min16 = Math.min(...partidos16.map((x) => ms(result.assignments[x.id].hora_inicio)));
+    expect(min16).toBeGreaterThan(max32);
   });
 
-  it("partido fijo mantiene su slot y no se reasigna", () => {
+  it("sincroniza etapas: cuarta segunda ronda y tercera primera ronda en la misma ola", () => {
+    const cuadro32 = "cuadro-32";
+    const cuadro16 = "cuadro-16";
+
+    const partidos32Primera = [0, 1].map((i) =>
+      p({
+        id: `32-pr-${i}`,
+        cuadro_id: cuadro32,
+        tamano: 32,
+        ronda: "primera_ronda",
+        posicion: i,
+        jugador1_id: `32a${i}`,
+        jugador2_id: `32b${i}`,
+      })
+    );
+    const partidos32Segunda = [0, 1].map((i) =>
+      p({
+        id: `32-sr-${i}`,
+        cuadro_id: cuadro32,
+        tamano: 32,
+        ronda: "segunda_ronda",
+        posicion: i,
+        jugador1_id: null,
+        jugador2_id: null,
+      })
+    );
+    const partidos16Primera = [0, 1].map((i) =>
+      p({
+        id: `16-pr-${i}`,
+        cuadro_id: cuadro16,
+        tamano: 16,
+        ronda: "primera_ronda",
+        posicion: i,
+        jugador1_id: `16a${i}`,
+        jugador2_id: `16b${i}`,
+      })
+    );
+
+    const slots = generarSlots("2026-06-05", "2026-06-05", 2);
+    const result = asignarHorarios({
+      slots,
+      partidos: [...partidos32Primera, ...partidos32Segunda, ...partidos16Primera],
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    const max32Primera = Math.max(
+      ...partidos32Primera.map((x) => ms(result.assignments[x.id].hora_inicio))
+    );
+    const minEtapa16 = Math.min(
+      ...[...partidos32Segunda, ...partidos16Primera].map((x) => ms(result.assignments[x.id].hora_inicio))
+    );
+    expect(minEtapa16).toBeGreaterThan(max32Primera);
+  });
+
+  it("falla si no hay slots suficientes para todo el cuadro", () => {
     const fijoHora = "2026-09-05T09:00:00-04:00";
     const partidos: PartidoScheduleInput[] = [
       p({
@@ -175,6 +239,15 @@ describe("asignarHorarios", () => {
     expect(ms(result.assignments["s0"].hora_inicio)).toBeGreaterThanOrEqual(
       ms(fijoHora) + REST_MINUTES * 60_000
     );
+  });
+});
+
+describe("jugadoresAlInicioRonda", () => {
+  it("mapea rondas a jugadores en liza segun tamano del cuadro", () => {
+    expect(jugadoresAlInicioRonda(32, "primera_ronda")).toBe(32);
+    expect(jugadoresAlInicioRonda(32, "segunda_ronda")).toBe(16);
+    expect(jugadoresAlInicioRonda(16, "primera_ronda")).toBe(16);
+    expect(jugadoresAlInicioRonda(8, "cuartos")).toBe(8);
   });
 });
 

@@ -30,11 +30,15 @@ export async function POST(request: Request) {
 
   const { data: cuadros } = await admin
     .from("cuadro")
-    .select("id")
+    .select("id, tamano")
     .eq("torneo_id", torneoId);
 
   const cuadroIds = (cuadros ?? []).map((c) => c.id);
   if (!cuadroIds.length) return NextResponse.json({ ok: true, programados: 0 });
+
+  const tamanoPorCuadro = new Map(
+    (cuadros ?? []).map((c) => [c.id, Number(c.tamano) as 8 | 16 | 32])
+  );
 
   const { data: partidosRaw } = await admin
     .from("partido")
@@ -43,7 +47,12 @@ export async function POST(request: Request) {
     )
     .in("cuadro_id", cuadroIds);
 
-  const partidos = (partidosRaw ?? []) as PartidoScheduleInput[];
+  const partidos = (partidosRaw ?? [])
+    .filter((row): row is typeof row & { cuadro_id: string } => row.cuadro_id != null)
+    .map((row) => ({
+      ...row,
+      tamano: tamanoPorCuadro.get(row.cuadro_id),
+    })) as PartidoScheduleInput[];
   if (!partidos.length) return NextResponse.json({ ok: true, programados: 0 });
 
   const errorHorarios = horariosPorDia ? validarHorariosPorDia(horariosPorDia) : null;

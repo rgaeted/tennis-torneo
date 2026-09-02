@@ -1,7 +1,9 @@
 import { describe, it, expect } from "vitest";
 import {
+  AB_SHUTTER3_IOS_BINDING,
   bindingFromKeyboardEvent,
   eventMatchesBinding,
+  isTypingTarget,
   parseBindings,
   serializeBindings,
   shouldAcceptPress,
@@ -63,5 +65,25 @@ describe("playerForKeyEvent", () => {
     expect(playerForKeyEvent({ code: "KeyQ", key: "q" }, bindings)).toBe("j1");
     expect(playerForKeyEvent({ code: "KeyP", key: "p" }, bindings)).toBe("j2");
     expect(playerForKeyEvent({ code: "Space", key: " " }, bindings)).toBeNull();
+  });
+
+  it("AB Shutter3 acepta Enter (botón Android) y Volume Up (botón iOS)", () => {
+    const bindings = { j1: AB_SHUTTER3_IOS_BINDING, j2: null };
+    expect(playerForKeyEvent({ code: "Enter", key: "Enter" }, bindings)).toBe("j1");
+    expect(playerForKeyEvent({ code: "NumpadEnter", key: "Enter" }, bindings)).toBe("j1");
+    expect(playerForKeyEvent({ code: "AudioVolumeUp", key: "AudioVolumeUp" }, bindings)).toBe("j1");
+    expect(playerForKeyEvent({ code: "", key: "VolumeUp" }, bindings)).toBe("j1");
+    expect(playerForKeyEvent({ code: "KeyQ", key: "q" }, bindings)).toBeNull();
+  });
+});
+
+describe("isTypingTarget", () => {
+  it("ignora campos normales y deja pasar el input de captura", () => {
+    const input = { tagName: "INPUT", isContentEditable: false, dataset: {} };
+    const capture = { tagName: "INPUT", isContentEditable: false, dataset: { scoreButtonCapture: "true" } };
+    const div = { tagName: "DIV", isContentEditable: false, dataset: {} };
+    expect(isTypingTarget(input)).toBe(true);
+    expect(isTypingTarget(capture)).toBe(false);
+    expect(isTypingTarget(div)).toBe(false);
   });
 });

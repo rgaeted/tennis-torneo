@@ -23,8 +23,35 @@ export function bindingFromKeyboardEvent(e: { code: string; key: string }): HidB
   return { kind: "hid", code: e.code, key: e.key };
 }
 
+const VOLUME_UP_CODES = new Set(["AudioVolumeUp", "VolumeUp"]);
+const VOLUME_UP_KEYS = new Set(["AudioVolumeUp", "VolumeUp", "AudioVolumeUpChange"]);
+const ENTER_CODES = new Set(["Enter", "NumpadEnter"]);
+
+export function isAbShutter3Binding(binding: HidBinding): boolean {
+  return binding.code === AB_SHUTTER3_IOS_BINDING.code;
+}
+
+export function isAbShutter3Key(e: { code: string; key: string }): boolean {
+  return VOLUME_UP_CODES.has(e.code) || VOLUME_UP_KEYS.has(e.key) || ENTER_CODES.has(e.code) || e.key === "Enter";
+}
+
 export function eventMatchesBinding(e: { code: string; key: string }, binding: HidBinding): boolean {
-  return e.code === binding.code;
+  if (isAbShutter3Binding(binding)) return isAbShutter3Key(e);
+  return e.code === binding.code || (e.code === "" && e.key === binding.key);
+}
+
+type TypingLike = {
+  tagName?: string;
+  isContentEditable?: boolean;
+  dataset?: { scoreButtonCapture?: string };
+};
+
+export function isTypingTarget(target: EventTarget | TypingLike | null): boolean {
+  if (!target || typeof target !== "object") return false;
+  const el = target as TypingLike;
+  if (el.dataset?.scoreButtonCapture === "true") return false;
+  const tag = el.tagName;
+  return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || !!el.isContentEditable;
 }
 
 export function parseBindings(raw: string | null): ScoreButtonBindings {

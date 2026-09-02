@@ -1,4 +1,5 @@
 "use client";
+import { useEffect, useRef } from "react";
 import { useScoreButtons } from "@/lib/live/useScoreButtons";
 import { AB_SHUTTER3_IOS_BINDING } from "@/lib/live/buttonBindings";
 import { isIosSafari } from "@/lib/live/platform";
@@ -16,10 +17,33 @@ export default function BluetoothButtons({
   const {
     bindings, capturing, bleSupported, error,
     beginHidCapture, assignAbShutter3, cancelCapture, connectBle, disconnect,
+    keepCaptureFocus,
   } = useScoreButtons(partidoId, onPoint);
 
   const iosSafari = isIosSafari();
+  const captureRef = useRef<HTMLInputElement>(null);
   const slots: Player[] = selfPlayer ? [selfPlayer] : ["j1", "j2"];
+
+  useEffect(() => {
+    if (!keepCaptureFocus) return;
+    const el = captureRef.current;
+    if (!el) return;
+    const focus = () => el.focus({ preventScroll: true });
+    focus();
+    const onVis = () => { if (document.visibilityState === "visible") focus(); };
+    const onClick = (e: Event) => {
+      const t = e.target;
+      if (t instanceof HTMLElement && (t.closest("button") || t.closest("a"))) {
+        window.setTimeout(focus, 300);
+      }
+    };
+    document.addEventListener("visibilitychange", onVis);
+    document.addEventListener("click", onClick);
+    return () => {
+      document.removeEventListener("visibilitychange", onVis);
+      document.removeEventListener("click", onClick);
+    };
+  }, [keepCaptureFocus]);
 
   function bindingLabel(b: typeof bindings.j1) {
     if (!b) return "";
@@ -33,9 +57,25 @@ export default function BluetoothButtons({
       <p className="text-court text-xs font-bold uppercase tracking-widest text-center">
         Botón Bluetooth
       </p>
+      {keepCaptureFocus && (
+        <input
+          ref={captureRef}
+          data-score-button-capture="true"
+          readOnly
+          inputMode="none"
+          autoComplete="off"
+          aria-label="Captura del mando Bluetooth"
+          className="sr-only absolute -left-[9999px] h-px w-px opacity-0"
+          onBlur={(e) => {
+            const next = e.relatedTarget;
+            if (next instanceof HTMLElement && (next.closest("button") || next.closest("a") || next.closest("input"))) return;
+            requestAnimationFrame(() => captureRef.current?.focus({ preventScroll: true }));
+          }}
+        />
+      )}
       <p className="text-xs text-slate-500 text-center">
         {iosSafari
-          ? "En iPhone: empareja el AB Shutter3 en Ajustes → Bluetooth y usa el botón de abajo. El volumen puede subir al apretar — es normal en Safari; si no suma puntos, usa los + en pantalla."
+          ? "Usa el botón Android del AB Shutter3 (el que no es el de cámara). El de iOS solo sube el volumen y Safari no lo entrega a la web. Dejá esta pantalla abierta y no tapées otro campo."
           : "Empareja un mando selfie o presentador. Primero conéctalo en el Bluetooth del teléfono, luego pulsa Conectar y aprieta el botón."}
       </p>
       {error && <p className="text-xs text-red-400 text-center">{error}</p>}

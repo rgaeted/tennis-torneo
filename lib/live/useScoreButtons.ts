@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Player } from "./types";
 import {
   bindingFromKeyboardEvent,
+  isTypingTarget,
   parseBindings,
   playerForKeyEvent,
   serializeBindings,
@@ -12,12 +13,7 @@ import {
   type ScoreButtonBindings,
 } from "./buttonBindings";
 import { connectBleNotifyButton, type BluetoothRequestApi } from "./bleButton";
-
-function isTypingTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  const tag = target.tagName;
-  return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || target.isContentEditable;
-}
+import { isIosSafari } from "./platform";
 
 export function useScoreButtons(partidoId: string, onPoint: (player: Player) => void) {
   const [bindings, setBindings] = useState<ScoreButtonBindings>({ j1: null, j2: null });
@@ -67,7 +63,13 @@ export function useScoreButtons(partidoId: string, onPoint: (player: Player) => 
       tryPoint(player);
     }
     window.addEventListener("keydown", onKeyDown, true);
-    return () => window.removeEventListener("keydown", onKeyDown, true);
+    window.addEventListener("keyup", onKeyDown, true);
+    window.addEventListener("keypress", onKeyDown, true);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown, true);
+      window.removeEventListener("keyup", onKeyDown, true);
+      window.removeEventListener("keypress", onKeyDown, true);
+    };
   }, [tryPoint]);
 
   useEffect(() => {
@@ -114,5 +116,6 @@ export function useScoreButtons(partidoId: string, onPoint: (player: Player) => 
       delete bleStops.current[player];
       setBindings((prev) => ({ ...prev, [player]: null }));
     },
+    keepCaptureFocus: isIosSafari() && (bindings.j1?.kind === "hid" || bindings.j2?.kind === "hid"),
   };
 }

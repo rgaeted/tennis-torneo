@@ -42,7 +42,10 @@ export function ProgramarModal({ partidoId, jugador1, jugador2, horaInicioActual
 
     const json = await res.json();
     setLoading(false);
-    if (!res.ok) { setError(json.error); return; }
+    if (!res.ok) {
+      setError(json.error ?? "No se pudo guardar el horario.");
+      return;
+    }
     onSuccess();
   }
 
@@ -95,7 +98,12 @@ export function ProgramarModal({ partidoId, jugador1, jugador2, horaInicioActual
             )}
           </div>
 
-          {error && <p className="text-red-400 text-sm">{error}</p>}
+          {error && (
+            <div className="rounded-lg border border-red-800/60 bg-red-950/40 px-3 py-2.5">
+              <p className="text-red-300 text-xs font-medium mb-0.5">Horario no válido</p>
+              <p className="text-red-400 text-xs leading-relaxed">{error}</p>
+            </div>
+          )}
 
           <div className="flex gap-3 pt-1">
             <button

@@ -3,6 +3,7 @@ import { requireTorneoAccess } from "@/lib/supabase/orgAuth";
 import {
   asignarHorarios,
   generarSlots,
+  validarHorariosPorDia,
   type PartidoScheduleInput,
 } from "@/lib/scheduling/autoSchedule";
 import { NextResponse } from "next/server";
@@ -45,7 +46,19 @@ export async function POST(request: Request) {
   const partidos = (partidosRaw ?? []) as PartidoScheduleInput[];
   if (!partidos.length) return NextResponse.json({ ok: true, programados: 0 });
 
-  const slots = generarSlots(fechaInicio, fechaFin, numCanchas, horariosPorDia);
+  const errorHorarios = horariosPorDia ? validarHorariosPorDia(horariosPorDia) : null;
+  if (errorHorarios) {
+    return NextResponse.json({ error: errorHorarios }, { status: 422 });
+  }
+
+  let slots;
+  try {
+    slots = generarSlots(fechaInicio, fechaFin, numCanchas, horariosPorDia);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Horario inválido";
+    return NextResponse.json({ error: msg }, { status: 422 });
+  }
+
   const result = asignarHorarios({ slots, partidos });
 
   if (!result.ok) {

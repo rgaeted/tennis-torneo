@@ -6,6 +6,7 @@ import {
   HORARIO_DIA_DEFAULT,
   horariosPorDefecto,
   slotsPorDia,
+  validarHorariosPorDia,
   type DiaSemana,
   type HorarioDia,
 } from "@/lib/scheduling/autoSchedule";
@@ -50,6 +51,13 @@ export function ProgramarAutomaticoModal({
     setError(null);
     setOkMsg(null);
 
+    const errorHorarios = validarHorariosPorDia(horarios);
+    if (errorHorarios) {
+      setLoading(false);
+      setError(errorHorarios);
+      return;
+    }
+
     const res = await fetch("/api/admin/partidos/programar-automatico", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -59,7 +67,7 @@ export function ProgramarAutomaticoModal({
     setLoading(false);
 
     if (!res.ok) {
-      setError(json.error ?? "Error al programar");
+      setError(json.error ?? "No se pudo programar el torneo.");
       return;
     }
 
@@ -68,8 +76,8 @@ export function ProgramarAutomaticoModal({
       setOkMsg("No había partidos pendientes de programar.");
     } else {
       setOkMsg(`${n} partido${n !== 1 ? "s" : ""} programado${n !== 1 ? "s" : ""} correctamente.`);
+      onSuccess(n);
     }
-    onSuccess(n);
   }
 
   return (
@@ -153,7 +161,12 @@ export function ProgramarAutomaticoModal({
             )}
           </div>
 
-          {error && <p className="text-red-400 text-xs">{error}</p>}
+          {error && (
+            <div className="rounded-lg border border-red-800/60 bg-red-950/40 px-3 py-2.5">
+              <p className="text-red-300 text-xs font-medium mb-0.5">No se pudo programar</p>
+              <p className="text-red-400 text-xs leading-relaxed">{error}</p>
+            </div>
+          )}
           {okMsg && <p className="text-court text-xs font-medium">{okMsg}</p>}
 
           <div className="flex gap-3 pt-1">

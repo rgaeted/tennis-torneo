@@ -373,3 +373,77 @@ export function slotsPorDia(numCanchas: number, horario: HorarioDia = HORARIO_DI
   const last = parseHoraMinutos(horario.fin ?? HORARIO_DIA_DEFAULT.fin!);
   return (Math.floor((last - start) / DURATION) + 1) * numCanchas;
 }
+
+export function validarHorariosPorDia(
+  horarios: Partial<Record<DiaSemana, HorarioDia>>
+): string | null {
+  for (const { key, label } of DIAS_SEMANA) {
+    const h = { ...HORARIO_DIA_DEFAULT, ...horarios[key] };
+    try {
+      const start = parseHoraMinutos(h.inicio);
+      const fin = parseHoraMinutos(h.fin ?? HORARIO_DIA_DEFAULT.fin!);
+      if (start > fin) {
+        return `${label}: la hora de inicio no puede ser después de la hora de fin.`;
+      }
+    } catch (e) {
+      return e instanceof Error ? e.message : "Horario inválido";
+    }
+  }
+  return null;
+}
+
+function horariosSeSolapan(aInicio: string, bInicio: string): boolean {
+  const ta = new Date(aInicio).getTime();
+  const tb = new Date(bInicio).getTime();
+  if (!Number.isFinite(ta) || !Number.isFinite(tb)) return false;
+  return Math.abs(ta - tb) < DURATION * 60_000;
+}
+
+export function validarHorarioManual(input: {
+  partido: PartidoScheduleInput;
+  horaInicio: string;
+  cancha: string;
+  partidos: PartidoScheduleInput[];
+}): string | null {
+  const { partido, horaInicio, cancha, partidos } = input;
+  const porCuadro = new Map<string, PartidoScheduleInput[]>();
+  for (const p of partidos) {
+    const list = porCuadro.get(p.cuadro_id) ?? [];
+    list.push(p);
+    porCuadro.set(p.cuadro_id, list);
+  }
+
+  for (const otro of partidos) {
+    if (otro.id === partido.id || !otro.hora_inicio || !otro.cancha) continue;
+    if (otro.cancha !== cancha) continue;
+    if (horariosSeSolapan(horaInicio, otro.hora_inicio)) {
+      return `La cancha ${cancha} ya tiene un partido en ese horario. Elegí otra hora o cancha.`;
+    }
+  }
+
+  const jugadores = jugadoresEnPartido(partido);
+  if (jugadores.length) {
+    for (const otro of partidos) {
+      if (otro.id === partido.id || !otro.hora_inicio) continue;
+      if (!horariosSeSolapan(horaInicio, otro.hora_inicio)) continue;
+      for (const j of jugadoresEnPartido(otro)) {
+        if (jugadores.includes(j)) {
+          return "Uno de los jugadores ya tiene partido en ese horario.";
+        }
+      }
+    }
+  }
+
+  const feeders = feedersReales(partido, porCuadro);
+  let minTime = 0;
+  for (const f of feeders) {
+    if (!f.hora_inicio) continue;
+    const t = new Date(f.hora_inicio).getTime() + REST_MINUTES * 60_000;
+    if (t > minTime) minTime = t;
+  }
+  if (minTime > 0 && new Date(horaInicio).getTime() < minTime) {
+    return "Este horario es muy temprano: deben pasar al menos 3 horas desde los partidos previos del cuadro.";
+  }
+
+  return null;
+}

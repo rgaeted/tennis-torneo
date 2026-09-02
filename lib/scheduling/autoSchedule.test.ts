@@ -3,6 +3,8 @@ import {
   asignarHorarios,
   generarSlots,
   REST_MINUTES,
+  validarHorarioManual,
+  validarHorariosPorDia,
   type PartidoScheduleInput,
 } from "./autoSchedule";
 
@@ -191,5 +193,42 @@ describe("generarSlots", () => {
     expect(slots[0].fechaISO).toBe("2026-06-04T17:00:00-04:00");
     expect(slots[1].fechaISO).toBe("2026-06-04T18:30:00-04:00");
     expect(slots[2].fechaISO).toBe("2026-06-04T20:00:00-04:00");
+  });
+});
+
+describe("validarHorariosPorDia", () => {
+  it("rechaza inicio despues del fin", () => {
+    expect(validarHorariosPorDia({ jue: { inicio: "18:00", fin: "17:00" } })).toMatch(/Jueves/i);
+  });
+});
+
+describe("validarHorarioManual", () => {
+  it("rechaza cancha ocupada", () => {
+    const partidos: PartidoScheduleInput[] = [
+      p({ id: "a", ronda: "cuartos", posicion: 0, hora_inicio: "2026-06-04T17:00:00-04:00", cancha: "1" }),
+      p({ id: "b", ronda: "cuartos", posicion: 1 }),
+    ];
+    const err = validarHorarioManual({
+      partido: partidos[1],
+      horaInicio: "2026-06-04T17:00:00-04:00",
+      cancha: "1",
+      partidos,
+    });
+    expect(err).toMatch(/cancha 1/i);
+  });
+
+  it("rechaza horario antes de partidos previos", () => {
+    const partidos: PartidoScheduleInput[] = [
+      p({ id: "c0", ronda: "cuartos", posicion: 0, hora_inicio: "2026-06-04T17:00:00-04:00", cancha: "1" }),
+      p({ id: "c1", ronda: "cuartos", posicion: 1, hora_inicio: "2026-06-04T17:00:00-04:00", cancha: "2" }),
+      p({ id: "s0", ronda: "semis", posicion: 0, jugador1_id: null, jugador2_id: null }),
+    ];
+    const err = validarHorarioManual({
+      partido: partidos[2],
+      horaInicio: "2026-06-04T19:00:00-04:00",
+      cancha: "3",
+      partidos,
+    });
+    expect(err).toMatch(/temprano/i);
   });
 });

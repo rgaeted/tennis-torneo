@@ -1,4 +1,6 @@
-import { createClient } from "./server";
+import { createClient, createAdminClient } from "./server";
+import { getRequestUser } from "./requestUser";
+import { isStaffForTorneo } from "../auth/staffAccess";
 
 /** Retorna el user si es admin O si es organizador con acceso al torneo indicado. */
 export async function requireTorneoAccess(torneoId: string) {
@@ -50,4 +52,34 @@ export async function requirePartidoAccess(partidoId: string) {
   const torneoId = (partido as any)?.cuadro?.torneo_id;
   if (!torneoId) return null;
   return requireTorneoAccess(torneoId);
+}
+
+export async function requireStaffTorneoAccess(request: Request, torneoId: string) {
+  const user = await getRequestUser(request);
+  if (!user) return null;
+  const admin = createAdminClient();
+  const [{ data: jugador }, { data: torneo }] = await Promise.all([
+    admin.from("jugador").select("rol, organizacion_id").eq("id", user.id).single(),
+    admin.from("torneo").select("organizacion_id").eq("id", torneoId).single(),
+  ]);
+  if (!jugador || !torneo) return null;
+  if (!isStaffForTorneo(jugador, torneo)) return null;
+  return user;
+}
+
+export async function requireStaffPartidoAccess(request: Request, partidoId: string) {
+  const admin = createAdminClient();
+  const { data: partido } = await admin
+    .from("partido")
+    .select("cuadro_id")
+    .eq("id", partidoId)
+    .single();
+  if (!partido?.cuadro_id) return null;
+  const { data: cuadro } = await admin
+    .from("cuadro")
+    .select("torneo_id")
+    .eq("id", partido.cuadro_id)
+    .single();
+  if (!cuadro) return null;
+  return requireStaffTorneoAccess(request, cuadro.torneo_id);
 }

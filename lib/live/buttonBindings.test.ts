@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   AB_SHUTTER3_IOS_BINDING,
   bindingFromKeyboardEvent,
+  DEVICE_BINDINGS_STORAGE_KEY,
   eventMatchesBinding,
   isTypingTarget,
   parseBindings,
@@ -14,6 +15,16 @@ import {
 describe("storageKey", () => {
   it("namespaced por partido", () => {
     expect(storageKey("abc")).toBe("score-buttons:abc");
+  });
+});
+
+describe("device bindings key", () => {
+  it("device key es fija", () => {
+    expect(DEVICE_BINDINGS_STORAGE_KEY).toBe("score-buttons:device");
+  });
+  it("roundtrip device bindings", () => {
+    const raw = serializeBindings({ j1: AB_SHUTTER3_IOS_BINDING, j2: null });
+    expect(parseBindings(raw).j1).toEqual(AB_SHUTTER3_IOS_BINDING);
   });
 });
 

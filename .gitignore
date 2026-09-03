@@ -23,6 +23,9 @@
 # misc
 .DS_Store
 *.pem
+mobile/node_modules
+mobile/.expo
+mobile/.env
 
 # debug
 npm-debug.log*
